@@ -1,6 +1,6 @@
 {
 	"name": "oidc-loki",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Security Chaos Engineering tool for OIDC - A Bad Identity Provider",
 	"type": "module",
 	"main": "dist/index.js",
@@ -41,7 +41,14 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write ."
 	},
-	"keywords": ["oidc", "oauth2", "security", "chaos-engineering", "testing", "identity"],
+	"keywords": [
+		"oidc",
+		"oauth2",
+		"security",
+		"chaos-engineering",
+		"testing",
+		"identity"
+	],
 	"author": "Chiradeep Chhaya <cbc.devel@gmail.com>",
 	"license": "MIT",
 	"engines": {
