@@ -45,7 +45,9 @@ export class MischiefEngine {
 	constructor(options: MischiefEngineOptions) {
 		this.pluginRegistry = options.pluginRegistry;
 		this.getPublicKey = options.getPublicKey;
-		this.onLedgerEntry = options.onLedgerEntry;
+		if (options.onLedgerEntry) {
+			this.onLedgerEntry = options.onLedgerEntry;
+		}
 	}
 
 	/**

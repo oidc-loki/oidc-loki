@@ -8,8 +8,8 @@ dist/
 data/*.db
 data/*.db-journal
 
-# Ledger exports
-ledger/
+# Ledger exports (root level only, not src/ledger)
+/ledger/
 
 # IDE
 .idea/

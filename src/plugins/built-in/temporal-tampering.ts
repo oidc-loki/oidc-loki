@@ -36,7 +36,7 @@ export const temporalTamperingPlugin: MischiefPlugin = {
 			return { applied: false, mutation: "No token context", evidence: {} };
 		}
 
-		const mode = (ctx.config.mode as TemporalMode | undefined) ?? "expired";
+		const mode = (ctx.config["mode"] as TemporalMode | undefined) ?? "expired";
 		const now = Math.floor(Date.now() / 1000);
 		const oneHour = 3600;
 

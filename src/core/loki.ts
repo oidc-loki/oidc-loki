@@ -13,7 +13,7 @@ import { createAdminApi } from "../admin/routes.js";
 import type { MischiefLedger } from "../ledger/types.js";
 import { LokiDatabase } from "../persistence/database.js";
 import { PluginRegistry } from "../plugins/registry.js";
-import { MischiefEngine, type RequestContext } from "./mischief-engine.js";
+import { MischiefEngine, type MischiefEngineOptions, type RequestContext } from "./mischief-engine.js";
 import { createProvider } from "./provider-adapter.js";
 import { DEFAULT_CONFIG, type LokiConfig, type Session, type SessionConfig } from "./types.js";
 
@@ -81,13 +81,15 @@ export class Loki {
 		const providerCallback = this.provider.callback();
 
 		// Initialize mischief engine with persistence callback
-		this.mischiefEngine = new MischiefEngine({
+		const engineOptions: MischiefEngineOptions = {
 			pluginRegistry: this.pluginRegistry,
 			getPublicKey: async () => this.getPublicKeyPem(),
-			onLedgerEntry: this.database
-				? (sessionId, entry) => this.database?.saveLedgerEntry(sessionId, entry)
-				: undefined,
-		});
+		};
+		if (this.database) {
+			const db = this.database;
+			engineOptions.onLedgerEntry = (sessionId, entry) => db.saveLedgerEntry(sessionId, entry);
+		}
+		this.mischiefEngine = new MischiefEngine(engineOptions);
 
 		// Initialize admin API
 		this.adminApi = createAdminApi({
@@ -178,7 +180,6 @@ export class Loki {
 
 		// Capture setHeader calls
 		const capturedHeaders: Record<string, string | string[]> = {};
-		const _originalSetHeader = res.setHeader.bind(res);
 		// biome-ignore lint/suspicious/noExplicitAny: complex overloaded function
 		(res as any).setHeader = (name: string, value: any) => {
 			capturedHeaders[name.toLowerCase()] = value;
@@ -250,8 +251,8 @@ export class Loki {
 		}
 
 		// Check if this is a token response
-		const accessToken = response.access_token as string | undefined;
-		const idToken = response.id_token as string | undefined;
+		const accessToken = response["access_token"] as string | undefined;
+		const idToken = response["id_token"] as string | undefined;
 
 		if (!accessToken && !idToken) {
 			// Not a token response
@@ -270,7 +271,7 @@ export class Loki {
 		if (accessToken?.includes(".")) {
 			const result = await this.mischiefEngine.applyToToken(accessToken, requestCtx);
 			if (result.applications.length > 0) {
-				response.access_token = result.token;
+				response["access_token"] = result.token;
 			}
 		}
 
@@ -278,7 +279,7 @@ export class Loki {
 		if (idToken?.includes(".")) {
 			const result = await this.mischiefEngine.applyToToken(idToken, requestCtx);
 			if (result.applications.length > 0) {
-				response.id_token = result.token;
+				response["id_token"] = result.token;
 			}
 		}
 
@@ -352,10 +353,11 @@ export class Loki {
 		const body = Buffer.concat(chunks);
 
 		// Create Web Request
+		const method = req.method ?? "GET";
 		const webRequest = new Request(fullUrl, {
-			method: req.method,
+			method,
 			headers: req.headers as Record<string, string>,
-			body: body.length > 0 && req.method !== "GET" && req.method !== "HEAD" ? body : undefined,
+			body: body.length > 0 && method !== "GET" && method !== "HEAD" ? body : null,
 		});
 
 		// Route through Hono

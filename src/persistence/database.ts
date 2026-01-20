@@ -236,7 +236,7 @@ export class LokiDatabase {
 				requirement: row.spec_requirement,
 				violation: row.spec_violation,
 			},
-			evidence: JSON.parse(row.evidence) as Record<string, unknown>,
+			evidence: JSON.parse(row.evidence) as LedgerEntry["evidence"],
 		};
 
 		if (row.spec_rfc) entry.spec.rfc = row.spec_rfc;

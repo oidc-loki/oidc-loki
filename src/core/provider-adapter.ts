@@ -132,7 +132,7 @@ function clientToOidcConfig(client: ClientConfig): ClientMetadata {
 	// client_credentials only -> no response_types needed
 	// authorization_code -> code response type
 	const needsCodeFlow = grantTypes.includes("authorization_code");
-	const responseTypes = needsCodeFlow ? ["code"] : [];
+	const responseTypes: ClientMetadata["response_types"] = needsCodeFlow ? ["code"] : [];
 
 	// redirect_uris required for authorization_code, not for client_credentials only
 	const redirectUris =

@@ -11,11 +11,11 @@ async function main() {
 	// TODO: Load config from file or CLI args
 	const config: LokiConfig = {
 		server: {
-			port: Number(process.env.LOKI_PORT) || 3000,
-			host: process.env.LOKI_HOST ?? "localhost",
+			port: Number(process.env["LOKI_PORT"]) || 3000,
+			host: process.env["LOKI_HOST"] ?? "localhost",
 		},
 		provider: {
-			issuer: process.env.LOKI_ISSUER ?? "http://localhost:3000",
+			issuer: process.env["LOKI_ISSUER"] ?? "http://localhost:3000",
 			clients: [
 				{
 					client_id: "test-client",
