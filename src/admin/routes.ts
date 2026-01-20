@@ -58,16 +58,18 @@ export function createAdminApi(deps: AdminDependencies): Hono {
 
 	// Create a new session
 	app.post("/sessions", async (c) => {
-		const body = (await c.req.json<Partial<SessionConfig>>().catch(() => ({}))) as Partial<SessionConfig>;
+		const body: Partial<SessionConfig> = await c.req
+			.json<Partial<SessionConfig>>()
+			.catch(() => ({}));
 		const sessionConfig: Partial<SessionConfig> = {
-			mode: body["mode"] ?? "explicit",
-			mischief: body["mischief"] ?? [],
+			mode: body.mode ?? "explicit",
+			mischief: body.mischief ?? [],
 		};
-		if (body["name"] !== undefined) {
-			sessionConfig.name = body["name"];
+		if (body.name !== undefined) {
+			sessionConfig.name = body.name;
 		}
-		if (body["probability"] !== undefined) {
-			sessionConfig.probability = body["probability"];
+		if (body.probability !== undefined) {
+			sessionConfig.probability = body.probability;
 		}
 		const session = deps.createSession(sessionConfig);
 		return c.json({ sessionId: session.id }, 201);

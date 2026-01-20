@@ -13,7 +13,11 @@ import { createAdminApi } from "../admin/routes.js";
 import type { MischiefLedger } from "../ledger/types.js";
 import { LokiDatabase } from "../persistence/database.js";
 import { PluginRegistry } from "../plugins/registry.js";
-import { MischiefEngine, type MischiefEngineOptions, type RequestContext } from "./mischief-engine.js";
+import {
+	MischiefEngine,
+	type MischiefEngineOptions,
+	type RequestContext,
+} from "./mischief-engine.js";
 import { createProvider } from "./provider-adapter.js";
 import { DEFAULT_CONFIG, type LokiConfig, type Session, type SessionConfig } from "./types.js";
 
@@ -251,8 +255,8 @@ export class Loki {
 		}
 
 		// Check if this is a token response
-		const accessToken = response["access_token"] as string | undefined;
-		const idToken = response["id_token"] as string | undefined;
+		const accessToken = response.access_token as string | undefined;
+		const idToken = response.id_token as string | undefined;
 
 		if (!accessToken && !idToken) {
 			// Not a token response
@@ -271,7 +275,7 @@ export class Loki {
 		if (accessToken?.includes(".")) {
 			const result = await this.mischiefEngine.applyToToken(accessToken, requestCtx);
 			if (result.applications.length > 0) {
-				response["access_token"] = result.token;
+				response.access_token = result.token;
 			}
 		}
 
@@ -279,7 +283,7 @@ export class Loki {
 		if (idToken?.includes(".")) {
 			const result = await this.mischiefEngine.applyToToken(idToken, requestCtx);
 			if (result.applications.length > 0) {
-				response["id_token"] = result.token;
+				response.id_token = result.token;
 			}
 		}
 

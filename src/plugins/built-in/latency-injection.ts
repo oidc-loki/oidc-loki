@@ -29,7 +29,7 @@ export const latencyInjectionPlugin: MischiefPlugin = {
 			return { applied: false, mutation: "No response context", evidence: {} };
 		}
 
-		const delayMs = (ctx.config["delayMs"] as number | undefined) ?? 5000;
+		const delayMs = (ctx.config.delayMs as number | undefined) ?? 5000;
 
 		await sleep(delayMs);
 
