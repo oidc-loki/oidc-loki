@@ -15,7 +15,7 @@ OIDC-Loki is a **security testing tool** designed to help developers test their 
 If you discover a security vulnerability in OIDC-Loki itself (not the intentional "mischief" behaviors), please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue
-2. Email the maintainers directly or use GitHub's private vulnerability reporting feature
+2. Email cbc.devel@gmail.com or use [GitHub's private vulnerability reporting](https://github.com/cbchhaya/oidc-loki/security/advisories/new)
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce

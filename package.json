@@ -29,7 +29,7 @@
 		"format": "biome format --write ."
 	},
 	"keywords": ["oidc", "oauth2", "security", "chaos-engineering", "testing", "identity"],
-	"author": "",
+	"author": "Chiradeep Chhaya <cbc.devel@gmail.com>",
 	"license": "MIT",
 	"engines": {
 		"node": ">=22.0.0"
