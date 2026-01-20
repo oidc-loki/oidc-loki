@@ -1,5 +1,12 @@
 # OIDC-Loki
 
+[![CI](https://github.com/cbchhaya/oidc-loki/actions/workflows/ci.yml/badge.svg)](https://github.com/cbchhaya/oidc-loki/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/cbchhaya/oidc-loki/actions/workflows/codeql.yml/badge.svg)](https://github.com/cbchhaya/oidc-loki/security/code-scanning)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/cbchhaya/oidc-loki/badge)](https://securityscorecards.dev/viewer/?uri=github.com/cbchhaya/oidc-loki)
+[![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](https://github.com/cbchhaya/oidc-loki)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
+
 **The Bad Identity Provider** - Security Chaos Engineering for OIDC
 
 OIDC-Loki is a programmable OIDC identity provider that intentionally violates specifications to test how resilient your OIDC client implementations are against malformed, malicious, or spec-violating responses.
@@ -126,12 +133,22 @@ curl -X POST http://localhost:3000/token \
 
 ## Built-in Mischief Plugins
 
-| Plugin | Severity | Description |
-|--------|----------|-------------|
-| `alg-none` | Critical | Sets JWT algorithm to "none" and removes signature |
-| `key-confusion` | Critical | Changes RS256 to HS256, signs with public key |
-| `temporal-tampering` | High | Manipulates token timestamps (expired, not-yet-valid) |
-| `latency-injection` | Medium | Adds configurable delays to responses |
+Each plugin targets a specific vulnerability class, complete with RFC/CWE references for compliance testing:
+
+| Plugin | Severity | Attack Vector | Spec Reference |
+|--------|----------|---------------|----------------|
+| `alg-none` | Critical | Removes JWT signature entirely | RFC 8725, CWE-327 |
+| `key-confusion` | Critical | RS256→HS256 key confusion | RFC 8725, CWE-327 |
+| `temporal-tampering` | High | Expired/future token timestamps | RFC 7519 §4.1.4, CWE-613 |
+| `latency-injection` | Medium | Response delay for timeout testing | OIDC Core §3.1.2.1 |
+
+### Why Plugins?
+
+Plugins are modular attack scenarios that can be:
+- **Composed**: Enable multiple attacks per session for complex scenarios
+- **Audited**: Every mutation is logged with RFC/CWE references
+- **Extended**: Write custom plugins for vendor-specific or compliance testing
+- **Randomized**: Use `random` or `shuffled` modes for fuzzing
 
 ## Session Modes
 
