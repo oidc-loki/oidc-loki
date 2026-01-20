@@ -8,6 +8,19 @@
 	"bin": {
 		"oidc-loki": "dist/cli.js"
 	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/cbchhaya/oidc-loki.git"
+	},
+	"homepage": "https://github.com/cbchhaya/oidc-loki#readme",
+	"bugs": {
+		"url": "https://github.com/cbchhaya/oidc-loki/issues"
+	},
 	"exports": {
 		".": {
 			"import": "./dist/index.js",
