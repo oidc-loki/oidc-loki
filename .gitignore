@@ -36,3 +36,10 @@ test-plugins/
 # Logs
 *.log
 npm-debug.log*
+
+# Example language artifacts
+__pycache__/
+*.pyc
+target/
+*.class
+.gradle/

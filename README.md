@@ -180,6 +180,7 @@ Plugins are modular attack scenarios that can be:
 - [Testing Guide](./docs/testing-guide.md) - How to test your OIDC clients
 - [Library Usage](./docs/library-usage.md) - Detailed API reference
 - [Plugin Development](./docs/plugin-development.md) - Create custom mischief plugins
+- [Client Examples](./examples/README.md) - Example clients in Go, Python, Rust, and Java
 
 ## Admin API
 
