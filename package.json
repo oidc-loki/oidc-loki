@@ -8,11 +8,7 @@
 	"bin": {
 		"oidc-loki": "dist/cli.js"
 	},
-	"files": [
-		"dist",
-		"LICENSE",
-		"README.md"
-	],
+	"files": ["dist", "LICENSE", "README.md"],
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/cbchhaya/oidc-loki.git"
@@ -41,14 +37,7 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write ."
 	},
-	"keywords": [
-		"oidc",
-		"oauth2",
-		"security",
-		"chaos-engineering",
-		"testing",
-		"identity"
-	],
+	"keywords": ["oidc", "oauth2", "security", "chaos-engineering", "testing", "identity"],
 	"author": "Chiradeep Chhaya <cbc.devel@gmail.com>",
 	"license": "MIT",
 	"engines": {
