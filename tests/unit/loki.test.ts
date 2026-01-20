@@ -34,11 +34,14 @@ describe("Loki", () => {
 
 			await loki.start();
 
-			expect(loki.plugins.count).toBe(4);
+			expect(loki.plugins.count).toBe(11);
 			expect(loki.plugins.has("alg-none")).toBe(true);
 			expect(loki.plugins.has("key-confusion")).toBe(true);
-			expect(loki.plugins.has("latency-injection")).toBe(true);
-			expect(loki.plugins.has("temporal-tampering")).toBe(true);
+			expect(loki.plugins.has("issuer-confusion")).toBe(true);
+			expect(loki.plugins.has("audience-confusion")).toBe(true);
+			expect(loki.plugins.has("subject-manipulation")).toBe(true);
+			expect(loki.plugins.has("nonce-bypass")).toBe(true);
+			expect(loki.plugins.has("state-bypass")).toBe(true);
 
 			await loki.stop();
 		});
@@ -146,7 +149,7 @@ describe("Loki", () => {
 				}),
 			});
 
-			expect(loki.plugins.count).toBe(5);
+			expect(loki.plugins.count).toBe(12);
 			expect(loki.plugins.has("custom-mischief")).toBe(true);
 
 			await loki.stop();
@@ -161,9 +164,10 @@ describe("Loki", () => {
 			await loki.start();
 
 			const tokenSigningPlugins = loki.plugins.getByPhase("token-signing");
-			expect(tokenSigningPlugins).toHaveLength(2);
+			expect(tokenSigningPlugins).toHaveLength(3); // alg-none, key-confusion, kid-manipulation
 			expect(tokenSigningPlugins.map((p) => p.id)).toContain("alg-none");
 			expect(tokenSigningPlugins.map((p) => p.id)).toContain("key-confusion");
+			expect(tokenSigningPlugins.map((p) => p.id)).toContain("kid-manipulation");
 
 			await loki.stop();
 		});
@@ -177,7 +181,7 @@ describe("Loki", () => {
 			await loki.start();
 
 			const criticalPlugins = loki.plugins.getBySeverity("critical");
-			expect(criticalPlugins).toHaveLength(2);
+			expect(criticalPlugins).toHaveLength(5); // alg-none, key-confusion, issuer-confusion, audience-confusion, subject-manipulation
 
 			await loki.stop();
 		});
