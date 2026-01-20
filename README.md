@@ -3,7 +3,7 @@
 [![CI](https://github.com/cbchhaya/oidc-loki/actions/workflows/ci.yml/badge.svg)](https://github.com/cbchhaya/oidc-loki/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/cbchhaya/oidc-loki/actions/workflows/codeql.yml/badge.svg)](https://github.com/cbchhaya/oidc-loki/security/code-scanning)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/cbchhaya/oidc-loki/badge)](https://securityscorecards.dev/viewer/?uri=github.com/cbchhaya/oidc-loki)
-[![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](https://github.com/cbchhaya/oidc-loki)
+[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/cbchhaya/oidc-loki)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 
@@ -135,12 +135,31 @@ curl -X POST http://localhost:3000/token \
 
 Each plugin targets a specific vulnerability class, complete with RFC/CWE references for compliance testing:
 
-| Plugin | Severity | Attack Vector | Spec Reference |
-|--------|----------|---------------|----------------|
-| `alg-none` | Critical | Removes JWT signature entirely | RFC 8725, CWE-327 |
-| `key-confusion` | Critical | RS256→HS256 key confusion | RFC 8725, CWE-327 |
-| `temporal-tampering` | High | Expired/future token timestamps | RFC 7519 §4.1.4, CWE-613 |
-| `latency-injection` | Medium | Response delay for timeout testing | OIDC Core §3.1.2.1 |
+### Critical Severity - Signature & Identity Attacks
+
+| Plugin | Attack Vector | Spec Reference |
+|--------|---------------|----------------|
+| `alg-none` | Removes JWT signature entirely | RFC 8725, CWE-327 |
+| `key-confusion` | RS256→HS256 key confusion attack | RFC 8725, CWE-327 |
+| `issuer-confusion` | Spoofs the `iss` claim to test issuer validation | RFC 7519 §4.1.1, CWE-290 |
+| `audience-confusion` | Manipulates `aud` claim for cross-service token abuse | RFC 7519 §4.1.3, CWE-284 |
+| `subject-manipulation` | Manipulates `sub` claim for identity spoofing | RFC 7519 §4.1.2, CWE-287 |
+
+### High Severity - Key & Flow Attacks
+
+| Plugin | Attack Vector | Spec Reference |
+|--------|---------------|----------------|
+| `kid-manipulation` | Manipulates key ID header for key confusion | RFC 7517 §4.5, CWE-347 |
+| `temporal-tampering` | Expired/future token timestamps | RFC 7519 §4.1.4, CWE-613 |
+| `nonce-bypass` | Removes or replays nonce for session fixation | OIDC Core §3.1.3.7, CWE-384 |
+| `state-bypass` | Manipulates state/azp for CSRF attacks | RFC 6749 §10.12, CWE-352 |
+| `pkce-downgrade` | Tests PKCE handling and auth context | RFC 7636, CWE-345 |
+
+### Medium Severity - Resilience Testing
+
+| Plugin | Attack Vector | Spec Reference |
+|--------|---------------|----------------|
+| `latency-injection` | Response delay for timeout testing | OIDC Core §3.1.2.1 |
 
 ### Why Plugins?
 
