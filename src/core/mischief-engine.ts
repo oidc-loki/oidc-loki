@@ -115,6 +115,39 @@ export class MischiefEngine {
 	}
 
 	/**
+	 * Apply discovery-phase mischief (discovery document and JWKS manipulation)
+	 */
+	async applyToDiscovery(
+		body: unknown,
+		requestCtx: RequestContext,
+	): Promise<{ body: unknown; applications: MischiefApplication[] }> {
+		const plugins = this.selectPlugins(requestCtx.session, ["discovery"]);
+
+		if (plugins.length === 0) {
+			return { body, applications: [] };
+		}
+
+		const applications: MischiefApplication[] = [];
+		let modifiedBody = body;
+
+		for (const plugin of plugins) {
+			const context = this.buildDiscoveryContext(modifiedBody, requestCtx.session, plugin);
+			const result = await plugin.apply(context);
+
+			if (result.applied) {
+				applications.push({ pluginId: plugin.id, result, plugin });
+				this.recordLedgerEntry(requestCtx, plugin, result);
+				// Get the potentially modified body from the context
+				if (context.response?.body !== undefined) {
+					modifiedBody = context.response.body;
+				}
+			}
+		}
+
+		return { body: modifiedBody, applications };
+	}
+
+	/**
 	 * Select which plugins to apply based on session mode
 	 */
 	private selectPlugins(session: Session, phases: MischiefPlugin["phase"][]): MischiefPlugin[] {
@@ -211,6 +244,36 @@ export class MischiefEngine {
 				status: 200,
 				headers: {},
 				body: null,
+				delay: async (ms: number) => {
+					await new Promise((resolve) => setTimeout(resolve, ms));
+				},
+			},
+			config: this.getPluginConfig(session, plugin.id),
+			session: sessionInfo,
+		};
+	}
+
+	/**
+	 * Build context for discovery-phase plugins (discovery document and JWKS)
+	 */
+	private buildDiscoveryContext(
+		body: unknown,
+		session: Session,
+		plugin: MischiefPlugin,
+	): MischiefContext {
+		const sessionInfo: MischiefContext["session"] = {
+			id: session.id,
+			mode: session.mode,
+		};
+		if (session.name !== undefined) {
+			sessionInfo.name = session.name;
+		}
+
+		return {
+			response: {
+				status: 200,
+				headers: {},
+				body,
 				delay: async (ms: number) => {
 					await new Promise((resolve) => setTimeout(resolve, ms));
 				},

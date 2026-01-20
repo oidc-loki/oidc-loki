@@ -1,9 +1,5 @@
 # Security Policy
 
-## Purpose of This Tool
-
-OIDC-Loki is a **security testing tool** designed to help developers test their OIDC client implementations against malformed and malicious tokens. It intentionally produces spec-violating outputs for defensive testing purposes.
-
 ## Supported Versions
 
 | Version | Supported          |
@@ -12,51 +8,56 @@ OIDC-Loki is a **security testing tool** designed to help developers test their 
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in OIDC-Loki itself (not the intentional "mischief" behaviors), please report it responsibly:
+If you discover a security vulnerability in OIDC-Loki, please report it responsibly.
 
-1. **Do NOT** open a public GitHub issue
-2. Email cbc.devel@gmail.com or use [GitHub's private vulnerability reporting](https://github.com/cbchhaya/oidc-loki/security/advisories/new)
-3. Include:
+### How to Report
+
+1. **Do NOT** create a public GitHub issue for security vulnerabilities
+2. Email the maintainer directly at: cbc.devel@gmail.com
+3. Include the following in your report:
    - Description of the vulnerability
    - Steps to reproduce
    - Potential impact
-   - Suggested fix (if any)
+   - Any suggested fixes (optional)
 
-We will acknowledge receipt within 48 hours and provide a timeline for a fix.
+### What to Expect
 
-## Security Considerations for Users
+- **Acknowledgment**: Within 48 hours of your report
+- **Initial Assessment**: Within 7 days
+- **Resolution Timeline**: Depends on severity
+  - Critical: 7 days
+  - High: 14 days
+  - Medium: 30 days
+  - Low: 90 days
 
-### This Tool is Dangerous by Design
+### Security Measures
 
-OIDC-Loki produces:
-- Tokens with `alg: "none"` (unsigned)
-- Tokens signed with wrong algorithms (key confusion)
-- Tokens with manipulated timestamps
-- Other spec-violating responses
+This project implements the following security practices:
 
-### Safe Usage Guidelines
+- **Dependency Scanning**: Automated via Dependabot and dependency-review-action
+- **Static Analysis**: CodeQL analysis on all PRs and main branch
+- **Supply Chain Security**: OpenSSF Scorecard monitoring
+- **Pinned Dependencies**: All GitHub Actions pinned to specific commit SHAs
 
-1. **Never run in production** - This tool is for testing only
-2. **Use isolated environments** - Run in containers or VMs
-3. **Never use real credentials** - Use test-only client IDs and secrets
-4. **Network isolation** - Don't expose Loki to untrusted networks
-5. **Audit trail** - Review the mischief ledger after testing
+## Scope
 
-### What We Don't Consider Vulnerabilities
+This security policy applies to:
+- The OIDC-Loki core library
+- Built-in mischief plugins
+- CLI tools
+- Documentation
 
-The following are intentional features, not bugs:
-- Producing unsigned tokens
-- Producing tokens with wrong algorithms
-- Producing expired or not-yet-valid tokens
-- Any behavior controlled by mischief plugins
+### Out of Scope
 
-## Dependencies
+- Third-party plugins (report to plugin maintainers)
+- Issues in dependencies (report to upstream projects)
 
-We monitor our dependencies for known vulnerabilities using:
-- GitHub Dependabot
-- npm audit
-- CodeQL scanning
+## Responsible Use
 
-## Acknowledgments
+OIDC-Loki is a security testing tool designed for authorized testing only. Users are responsible for:
 
-We appreciate security researchers who help keep OIDC-Loki safe for its intended use case of defensive security testing.
+- Obtaining proper authorization before testing
+- Complying with all applicable laws and regulations
+- Using the tool ethically and responsibly
+
+Misuse of this tool for unauthorized access or malicious purposes is strictly prohibited.

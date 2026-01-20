@@ -43,7 +43,7 @@ export const testPlugin = {
 		await registry.discoverCustom();
 
 		expect(registry.has("test-custom-plugin")).toBe(true);
-		expect(registry.count).toBe(12); // 11 built-in + 1 custom
+		expect(registry.count).toBe(16); // 15 built-in + 1 custom
 	});
 
 	it("should load plugin with default export", async () => {

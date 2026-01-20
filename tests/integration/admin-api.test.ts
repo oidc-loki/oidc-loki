@@ -37,7 +37,7 @@ describe("Admin API", () => {
 			const data = await response.json();
 			expect(data.status).toBe("ok");
 			expect(data.issuer).toBe(ISSUER);
-			expect(data.plugins).toBe(11);
+			expect(data.plugins).toBe(15);
 		});
 
 		it("should return health via admin endpoint", async () => {
@@ -173,7 +173,7 @@ describe("Admin API", () => {
 			expect(response.ok).toBe(true);
 
 			const data = await response.json();
-			expect(data.plugins).toHaveLength(11);
+			expect(data.plugins).toHaveLength(15);
 			expect(data.plugins.map((p: { id: string }) => p.id)).toContain("alg-none");
 			expect(data.plugins.map((p: { id: string }) => p.id)).toContain("key-confusion");
 		});
@@ -213,7 +213,7 @@ describe("Admin API", () => {
 			expect(response.ok).toBe(true);
 
 			const data = await response.json();
-			expect(data.plugins.length).toBe(5); // alg-none, key-confusion, issuer-confusion, audience-confusion, subject-manipulation
+			expect(data.plugins.length).toBe(8); // alg-none, key-confusion, issuer-confusion, audience-confusion, subject-manipulation, scope-injection, discovery-confusion, jwks-injection
 		});
 	});
 

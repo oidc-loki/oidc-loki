@@ -143,6 +143,28 @@ export class Loki {
 				return;
 			}
 
+			// If this is a discovery endpoint and we have an active session, intercept
+			if (
+				session &&
+				(url === "/.well-known/openid-configuration" ||
+					url.startsWith("/.well-known/openid-configuration?"))
+			) {
+				this.handleDiscoveryRequest(req, res, session, providerCallback, "discovery");
+				return;
+			}
+
+			// If this is a JWKS endpoint and we have an active session, intercept
+			if (
+				session &&
+				(url === "/jwks" ||
+					url.startsWith("/jwks?") ||
+					url === "/.well-known/jwks.json" ||
+					url.startsWith("/.well-known/jwks.json?"))
+			) {
+				this.handleDiscoveryRequest(req, res, session, providerCallback, "jwks");
+				return;
+			}
+
 			// All other routes go to OIDC provider directly
 			providerCallback(req, res);
 		});
@@ -291,6 +313,117 @@ export class Loki {
 		await this.mischiefEngine.applyToResponse(requestCtx);
 
 		return JSON.stringify(response);
+	}
+
+	/**
+	 * Handle discovery/JWKS endpoint with mischief interception
+	 */
+	private handleDiscoveryRequest(
+		req: IncomingMessage,
+		res: ServerResponse,
+		session: Session,
+		providerCallback: ReturnType<Provider["callback"]>,
+		endpointType: "discovery" | "jwks",
+	): void {
+		const chunks: Buffer[] = [];
+		let statusCode = 200;
+		let headers: Record<string, string | string[] | number | undefined> = {};
+
+		// Capture the status code
+		const originalWriteHead = res.writeHead.bind(res);
+		// biome-ignore lint/suspicious/noExplicitAny: complex overloaded function
+		(res as any).writeHead = (code: number, ...args: any[]) => {
+			statusCode = code;
+			if (args.length > 0 && typeof args[args.length - 1] === "object") {
+				headers = args[args.length - 1];
+			}
+			return res;
+		};
+
+		// Capture setHeader calls
+		const capturedHeaders: Record<string, string | string[]> = {};
+		// biome-ignore lint/suspicious/noExplicitAny: complex overloaded function
+		(res as any).setHeader = (name: string, value: any) => {
+			capturedHeaders[name.toLowerCase()] = value;
+			return res;
+		};
+
+		// Capture writes
+		// biome-ignore lint/suspicious/noExplicitAny: complex overloaded function
+		(res as any).write = (chunk: any, _encoding?: any, _cb?: any) => {
+			if (chunk) {
+				chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+			}
+			return true;
+		};
+
+		// Intercept end
+		// biome-ignore lint/suspicious/noExplicitAny: complex overloaded function
+		(res as any).end = (chunk?: any, _encoding?: any, _cb?: any) => {
+			if (chunk && typeof chunk !== "function") {
+				chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+			}
+
+			const body = Buffer.concat(chunks).toString();
+
+			// Apply mischief asynchronously
+			this.applyMischiefToDiscoveryResponse(body, session, req.url ?? "/", endpointType)
+				.then((modifiedBody) => {
+					const finalHeaders = { ...capturedHeaders, ...headers };
+					finalHeaders["content-length"] = Buffer.byteLength(modifiedBody);
+
+					originalWriteHead(statusCode, finalHeaders);
+					res.end = ServerResponse.prototype.end.bind(res);
+					res.end(modifiedBody);
+				})
+				.catch(() => {
+					const finalHeaders = { ...capturedHeaders, ...headers };
+					originalWriteHead(statusCode, finalHeaders);
+					res.end = ServerResponse.prototype.end.bind(res);
+					res.end(body);
+				});
+		};
+
+		providerCallback(req, res);
+	}
+
+	/**
+	 * Apply mischief to a discovery/JWKS endpoint response
+	 */
+	private async applyMischiefToDiscoveryResponse(
+		body: string,
+		session: Session,
+		endpoint: string,
+		_endpointType: "discovery" | "jwks",
+	): Promise<string> {
+		if (!this.mischiefEngine) {
+			return body;
+		}
+
+		// Try to parse as JSON
+		let response: unknown;
+		try {
+			response = JSON.parse(body);
+		} catch {
+			return body;
+		}
+
+		const requestCtx: RequestContext = {
+			requestId: `req_${nanoid(8)}`,
+			session,
+			endpoint,
+			method: "GET",
+			timestamp: new Date(),
+		};
+
+		// Apply discovery-phase mischief
+		const result = await this.mischiefEngine.applyToDiscovery(response, requestCtx);
+
+		if (result.applications.length > 0) {
+			return JSON.stringify(result.body);
+		}
+
+		return body;
 	}
 
 	/**

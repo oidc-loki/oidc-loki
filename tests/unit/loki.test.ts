@@ -34,7 +34,7 @@ describe("Loki", () => {
 
 			await loki.start();
 
-			expect(loki.plugins.count).toBe(11);
+			expect(loki.plugins.count).toBe(15);
 			expect(loki.plugins.has("alg-none")).toBe(true);
 			expect(loki.plugins.has("key-confusion")).toBe(true);
 			expect(loki.plugins.has("issuer-confusion")).toBe(true);
@@ -42,6 +42,10 @@ describe("Loki", () => {
 			expect(loki.plugins.has("subject-manipulation")).toBe(true);
 			expect(loki.plugins.has("nonce-bypass")).toBe(true);
 			expect(loki.plugins.has("state-bypass")).toBe(true);
+			expect(loki.plugins.has("scope-injection")).toBe(true);
+			expect(loki.plugins.has("discovery-confusion")).toBe(true);
+			expect(loki.plugins.has("jwks-injection")).toBe(true);
+			expect(loki.plugins.has("token-type-confusion")).toBe(true);
 
 			await loki.stop();
 		});
@@ -149,7 +153,7 @@ describe("Loki", () => {
 				}),
 			});
 
-			expect(loki.plugins.count).toBe(12);
+			expect(loki.plugins.count).toBe(16);
 			expect(loki.plugins.has("custom-mischief")).toBe(true);
 
 			await loki.stop();
@@ -164,10 +168,11 @@ describe("Loki", () => {
 			await loki.start();
 
 			const tokenSigningPlugins = loki.plugins.getByPhase("token-signing");
-			expect(tokenSigningPlugins).toHaveLength(3); // alg-none, key-confusion, kid-manipulation
+			expect(tokenSigningPlugins).toHaveLength(4); // alg-none, key-confusion, kid-manipulation, token-type-confusion
 			expect(tokenSigningPlugins.map((p) => p.id)).toContain("alg-none");
 			expect(tokenSigningPlugins.map((p) => p.id)).toContain("key-confusion");
 			expect(tokenSigningPlugins.map((p) => p.id)).toContain("kid-manipulation");
+			expect(tokenSigningPlugins.map((p) => p.id)).toContain("token-type-confusion");
 
 			await loki.stop();
 		});
@@ -181,7 +186,7 @@ describe("Loki", () => {
 			await loki.start();
 
 			const criticalPlugins = loki.plugins.getBySeverity("critical");
-			expect(criticalPlugins).toHaveLength(5); // alg-none, key-confusion, issuer-confusion, audience-confusion, subject-manipulation
+			expect(criticalPlugins).toHaveLength(8); // alg-none, key-confusion, issuer-confusion, audience-confusion, subject-manipulation, scope-injection, discovery-confusion, jwks-injection
 
 			await loki.stop();
 		});
