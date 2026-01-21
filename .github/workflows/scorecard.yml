@@ -21,7 +21,7 @@ jobs:
     steps:
       # Note: scorecard workflow verification requires tags, not pinned SHAs
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
