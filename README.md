@@ -181,6 +181,7 @@ Plugins are modular attack scenarios that can be:
 - [Library Usage](./docs/library-usage.md) - Detailed API reference
 - [Plugin Development](./docs/plugin-development.md) - Create custom mischief plugins
 - [Client Examples](./examples/README.md) - Example clients in Go, Python, Rust, and Java
+- [Blog: Why I Built OIDC-Loki](./docs/blog/2026-01-21-why-i-built-oidc-loki.md) - Background and motivation
 
 ## Admin API
 
@@ -216,6 +217,10 @@ Contributions welcome! Areas of interest:
 ## License
 
 MIT
+
+## Acknowledgments
+
+This project was built through human-AI collaboration using [Claude Code](https://claude.ai/code). The architecture, implementation, documentation, and test suite were developed iteratively through pair programming between a human developer and Claude (Anthropic's AI assistant).
 
 ---
 
