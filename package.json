@@ -44,7 +44,7 @@
 		"node": ">=22.0.0"
 	},
 	"dependencies": {
-		"better-sqlite3": "^11.10.0",
+		"better-sqlite3": "^12.6.2",
 		"hono": "^4.6.0",
 		"jose": "^5.9.0",
 		"nanoid": "^5.0.0",
