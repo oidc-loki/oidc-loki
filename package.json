@@ -1,6 +1,6 @@
 {
 	"name": "oidc-loki",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Security Chaos Engineering tool for OIDC - A Bad Identity Provider",
 	"type": "module",
 	"main": "dist/index.js",
