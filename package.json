@@ -45,7 +45,7 @@
 	},
 	"dependencies": {
 		"better-sqlite3": "^12.6.2",
-		"hono": "^4.6.0",
+		"hono": "^4.11.5",
 		"jose": "^5.9.0",
 		"nanoid": "^5.0.0",
 		"oidc-provider": "^9.6.0"
