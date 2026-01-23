@@ -27,8 +27,7 @@ export const tokenLifetimeAbuse: MischiefPlugin = {
 			{ name: "100 years", seconds: 100 * 365 * 24 * 60 * 60 },
 		];
 
-		const idx = Math.floor(Math.random() * lifetimes.length);
-		const selected = lifetimes[idx]!;
+		const selected = lifetimes[Math.floor(Math.random() * lifetimes.length)] ?? lifetimes[0];
 		ctx.token.claims.exp = now + selected.seconds;
 		ctx.token.claims.iat = now;
 

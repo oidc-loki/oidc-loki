@@ -17,31 +17,31 @@ export const responseTypeConfusion: MischiefPlugin = {
 			return { applied: false, mutation: "No token context", evidence: {} };
 		}
 
+		const token = ctx.token;
 		const attacks = [
 			{
 				name: "add-code-claim",
 				apply: () => {
-					ctx.token!.claims.code = "injected-auth-code";
+					token.claims.code = "injected-auth-code";
 				},
 			},
 			{
 				name: "add-implicit-claims",
 				apply: () => {
-					ctx.token!.claims.token_type = "Bearer";
-					ctx.token!.claims.implicit_flow = true;
+					token.claims.token_type = "Bearer";
+					token.claims.implicit_flow = true;
 				},
 			},
 			{
 				name: "hybrid-confusion",
 				apply: () => {
-					ctx.token!.claims.code = "fake-code";
-					ctx.token!.claims.access_token_hash = "fake-hash";
+					token.claims.code = "fake-code";
+					token.claims.access_token_hash = "fake-hash";
 				},
 			},
 		];
 
-		const idx = Math.floor(Math.random() * attacks.length);
-		const selectedAttack = attacks[idx]!;
+		const selectedAttack = attacks[Math.floor(Math.random() * attacks.length)] ?? attacks[0];
 		selectedAttack.apply();
 
 		return {

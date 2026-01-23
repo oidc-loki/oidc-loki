@@ -17,35 +17,36 @@ export const partialSuccess: MischiefPlugin = {
 			return { applied: false, mutation: "No token context", evidence: {} };
 		}
 
+		const token = ctx.token;
 		const scenarios = [
 			{
 				name: "missing-exp",
 				apply: () => {
-					delete ctx.token!.claims.exp;
+					token.claims.exp = undefined as unknown as number;
 				},
 			},
 			{
 				name: "missing-iat",
 				apply: () => {
-					delete ctx.token!.claims.iat;
+					token.claims.iat = undefined as unknown as number;
 				},
 			},
 			{
 				name: "empty-sub",
 				apply: () => {
-					ctx.token!.claims.sub = "";
+					token.claims.sub = "";
 				},
 			},
 			{
 				name: "null-iss",
 				apply: () => {
-					ctx.token!.claims.iss = null as unknown as string;
+					token.claims.iss = null as unknown as string;
 				},
 			},
 		];
 
-		const idx = Math.floor(Math.random() * scenarios.length);
-		const selectedScenario = scenarios[idx]!;
+		const selectedScenario =
+			scenarios[Math.floor(Math.random() * scenarios.length)] ?? scenarios[0];
 		selectedScenario.apply();
 
 		return {

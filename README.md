@@ -1,10 +1,12 @@
 # OIDC-Loki
 
+> **NOTICE:** This project is provided for demonstration and educational purposes only. It may NOT be used for commercial purposes. This software comes with NO WARRANTIES of any kind. Use at your own risk.
+
 [![CI](https://github.com/oidc-loki/oidc-loki/actions/workflows/ci.yml/badge.svg)](https://github.com/oidc-loki/oidc-loki/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/oidc-loki/oidc-loki/actions/workflows/codeql.yml/badge.svg)](https://github.com/oidc-loki/oidc-loki/security/code-scanning)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/oidc-loki/oidc-loki/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oidc-loki/oidc-loki)
 [![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/oidc-loki/oidc-loki)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 
 **The Bad Identity Provider** - Security Chaos Engineering for OIDC
@@ -216,7 +218,9 @@ Contributions welcome! Areas of interest:
 
 ## License
 
-MIT
+CC BY-NC-SA 4.0
+
+This project is for demonstration and educational purposes only. Commercial use is prohibited. See [LICENSE](./LICENSE) for details.
 
 ## Acknowledgments
 

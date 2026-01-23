@@ -30,7 +30,7 @@ export const curveConfusion: MischiefPlugin = {
 
 		return {
 			applied: true,
-			mutation: `Changed to ES256 with non-standard curve P-256K`,
+			mutation: "Changed to ES256 with non-standard curve P-256K",
 			evidence: {
 				originalAlgorithm: originalAlg,
 				newAlgorithm: "ES256",

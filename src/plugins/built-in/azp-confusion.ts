@@ -27,8 +27,8 @@ export const azpConfusion: MischiefPlugin = {
 			"internal-api",
 		];
 
-		const idx = Math.floor(Math.random() * attackerClients.length);
-		const selectedClient = attackerClients[idx]!;
+		const selectedClient =
+			attackerClients[Math.floor(Math.random() * attackerClients.length)] ?? "attacker-client";
 
 		ctx.token.claims.azp = selectedClient;
 

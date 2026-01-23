@@ -17,23 +17,25 @@ export const jsonParsingDifferentials: MischiefPlugin = {
 			return { applied: false, mutation: "No token context", evidence: {} };
 		}
 
+		const token = ctx.token;
 		const parsingTricks = [
 			{
 				name: "large-number",
 				apply: () => {
-					ctx.token!.claims.exp = 9999999999999999999 as number;
+					// Intentionally use a number that loses precision in JS
+					token.claims.exp = Number("9999999999999999999");
 				},
 			},
 			{
 				name: "scientific-notation",
 				apply: () => {
-					ctx.token!.claims.exp = 1e20 as unknown as number;
+					token.claims.exp = 1e20 as unknown as number;
 				},
 			},
 			{
 				name: "unicode-escapes",
 				apply: () => {
-					ctx.token!.claims.sub = "\\u0061dmin";
+					token.claims.sub = "\\u0061dmin";
 				},
 			},
 			{
@@ -43,13 +45,13 @@ export const jsonParsingDifferentials: MischiefPlugin = {
 					for (let i = 0; i < 100; i++) {
 						obj = { nested: obj };
 					}
-					ctx.token!.claims.deep_nested = obj;
+					token.claims.deep_nested = obj;
 				},
 			},
 		];
 
-		const idx = Math.floor(Math.random() * parsingTricks.length);
-		const selectedTrick = parsingTricks[idx]!;
+		const selectedTrick =
+			parsingTricks[Math.floor(Math.random() * parsingTricks.length)] ?? parsingTricks[0];
 		selectedTrick.apply();
 
 		return {

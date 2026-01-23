@@ -17,19 +17,20 @@ export const claimTypeCoercion: MischiefPlugin = {
 			return { applied: false, mutation: "No token context", evidence: {} };
 		}
 
+		const token = ctx.token;
 		const coercions = [
 			{
 				name: "sub-to-array",
 				apply: () => {
-					const sub = ctx.token!.claims.sub;
-					ctx.token!.claims.sub = [sub, "admin"] as unknown as string;
+					const sub = token.claims.sub;
+					token.claims.sub = [sub, "admin"] as unknown as string;
 				},
 			},
 			{
 				name: "aud-to-object",
 				apply: () => {
-					ctx.token!.claims.aud = {
-						primary: ctx.token!.claims.aud,
+					token.claims.aud = {
+						primary: token.claims.aud,
 						admin: true,
 					} as unknown as string;
 				},
@@ -37,19 +38,19 @@ export const claimTypeCoercion: MischiefPlugin = {
 			{
 				name: "exp-to-string",
 				apply: () => {
-					ctx.token!.claims.exp = "never" as unknown as number;
+					token.claims.exp = "never" as unknown as number;
 				},
 			},
 			{
 				name: "iat-to-string",
 				apply: () => {
-					ctx.token!.claims.iat = "beginning-of-time" as unknown as number;
+					token.claims.iat = "beginning-of-time" as unknown as number;
 				},
 			},
 		];
 
-		const idx = Math.floor(Math.random() * coercions.length);
-		const selectedCoercion = coercions[idx]!;
+		const selectedCoercion =
+			coercions[Math.floor(Math.random() * coercions.length)] ?? coercions[0];
 		selectedCoercion.apply();
 
 		return {

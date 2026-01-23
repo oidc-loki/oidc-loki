@@ -17,38 +17,39 @@ export const unicodeNormalization: MischiefPlugin = {
 			return { applied: false, mutation: "No token context", evidence: {} };
 		}
 
+		const token = ctx.token;
 		const unicodeTricks = [
 			{
 				name: "homoglyph-sub",
 				apply: () => {
-					const sub = String(ctx.token!.claims.sub || "user");
-					ctx.token!.claims.sub = sub.replace(/a/g, "\u0430");
+					const sub = String(token.claims.sub || "user");
+					token.claims.sub = sub.replace(/a/g, "\u0430");
 				},
 			},
 			{
 				name: "zero-width-injection",
 				apply: () => {
-					const sub = String(ctx.token!.claims.sub || "user");
-					ctx.token!.claims.sub = `${sub}\u200B\u200C\u200D`;
+					const sub = String(token.claims.sub || "user");
+					token.claims.sub = `${sub}\u200B\u200C\u200D`;
 				},
 			},
 			{
 				name: "nfkc-bypass",
 				apply: () => {
-					ctx.token!.claims.sub = "admin\uFB01le";
+					token.claims.sub = "admin\uFB01le";
 				},
 			},
 			{
 				name: "case-folding",
 				apply: () => {
-					ctx.token!.claims.sub = "ADM\u0131N";
+					token.claims.sub = "ADM\u0131N";
 				},
 			},
 		];
 
-		const idx = Math.floor(Math.random() * unicodeTricks.length);
-		const selectedTrick = unicodeTricks[idx]!;
-		const originalSub = ctx.token.claims.sub;
+		const selectedTrick =
+			unicodeTricks[Math.floor(Math.random() * unicodeTricks.length)] ?? unicodeTricks[0];
+		const originalSub = token.claims.sub;
 		selectedTrick.apply();
 
 		return {
@@ -57,7 +58,7 @@ export const unicodeNormalization: MischiefPlugin = {
 			evidence: {
 				trickType: selectedTrick.name,
 				originalSub,
-				newSub: ctx.token.claims.sub,
+				newSub: token.claims.sub,
 				vulnerability: "Client should normalize Unicode before string comparison",
 			},
 		};
