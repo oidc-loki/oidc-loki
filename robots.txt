@@ -1,0 +1,7 @@
+# Discourage search engine indexing
+User-agent: *
+Disallow: /
+
+# This file only affects crawlers that respect robots.txt
+# For GitHub Pages, the repo would need GitHub Pages settings configured
+# For GitHub code search, public repos are always indexed

@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# Data
+data/*.db
+data/*.db-journal
+
+# Ledger exports (root level only, not src/ledger)
+/ledger/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Test
+coverage/
+test-data/
+test-plugins/
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+npm-debug.log*
+
+# Example language artifacts
+__pycache__/
+*.pyc
+target/
+*.class
+.gradle/

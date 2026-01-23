@@ -1,0 +1,66 @@
+name: Feature Request
+description: Suggest a new feature or mischief plugin
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! We especially welcome new mischief plugin ideas.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Feature Type
+      options:
+        - New mischief plugin
+        - API enhancement
+        - CLI feature
+        - Documentation
+        - Testing improvement
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: A clear description of what you'd like to see.
+      placeholder: Describe the feature...
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Why is this feature needed? What problem does it solve?
+      placeholder: |
+        As a security tester, I want to...
+        So that I can verify my OIDC client handles...
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec-reference
+    attributes:
+      label: Specification Reference (for plugins)
+      description: If this is a mischief plugin, please provide relevant RFC/OIDC/CWE references.
+      placeholder: |
+        RFC 7519 Section 4.1.x
+        OIDC Core 1.0 Section x.x
+        CWE-xxx
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Are there other ways to achieve this with existing features?
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to submit a PR for this feature

@@ -1,0 +1,13 @@
+[package]
+name = "oidc-loki-example"
+version = "0.1.0"
+edition = "2021"
+description = "Example client demonstrating OIDC-Loki security testing"
+license = "MIT"
+
+[dependencies]
+base64 = "0.22"
+jsonwebtoken = "9.3"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
