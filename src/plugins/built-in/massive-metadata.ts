@@ -22,7 +22,7 @@ export const massiveMetadata: MischiefPlugin = {
 			{ name: "10000 scopes", count: 10000 },
 		];
 
-		const selected = sizes[Math.floor(Math.random() * sizes.length)] ?? sizes[0];
+		const selected = sizes[Math.floor(Math.random() * sizes.length)] as (typeof sizes)[0];
 
 		ctx.token.claims.metadata_scope_count = selected.count;
 

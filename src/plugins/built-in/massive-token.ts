@@ -23,7 +23,7 @@ export const massiveToken: MischiefPlugin = {
 			{ name: "10MB", chars: 10 * 1024 * 1024 },
 		];
 
-		const selected = sizes[Math.floor(Math.random() * sizes.length)] ?? sizes[0];
+		const selected = sizes[Math.floor(Math.random() * sizes.length)] as (typeof sizes)[0];
 		const padding = "X".repeat(selected.chars);
 
 		ctx.token.claims.massive_claim = padding;

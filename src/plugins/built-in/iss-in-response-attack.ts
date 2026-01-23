@@ -23,7 +23,9 @@ export const issInResponseAttack: MischiefPlugin = {
 			{ type: "subdomain", issuer: "https://issuer.attacker.com" },
 		];
 
-		const selectedAttack = attacks[Math.floor(Math.random() * attacks.length)] ?? attacks[0];
+		const selectedAttack = attacks[
+			Math.floor(Math.random() * attacks.length)
+		] as (typeof attacks)[0];
 		const originalIss = ctx.token.claims.iss;
 		ctx.token.claims.iss = selectedAttack.issuer;
 

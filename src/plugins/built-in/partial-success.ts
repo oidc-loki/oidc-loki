@@ -45,8 +45,9 @@ export const partialSuccess: MischiefPlugin = {
 			},
 		];
 
-		const selectedScenario =
-			scenarios[Math.floor(Math.random() * scenarios.length)] ?? scenarios[0];
+		const selectedScenario = scenarios[
+			Math.floor(Math.random() * scenarios.length)
+		] as (typeof scenarios)[0];
 		selectedScenario.apply();
 
 		return {

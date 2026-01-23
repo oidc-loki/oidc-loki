@@ -50,8 +50,9 @@ export const jsonParsingDifferentials: MischiefPlugin = {
 			},
 		];
 
-		const selectedTrick =
-			parsingTricks[Math.floor(Math.random() * parsingTricks.length)] ?? parsingTricks[0];
+		const selectedTrick = parsingTricks[
+			Math.floor(Math.random() * parsingTricks.length)
+		] as (typeof parsingTricks)[0];
 		selectedTrick.apply();
 
 		return {

@@ -47,8 +47,9 @@ export const unicodeNormalization: MischiefPlugin = {
 			},
 		];
 
-		const selectedTrick =
-			unicodeTricks[Math.floor(Math.random() * unicodeTricks.length)] ?? unicodeTricks[0];
+		const selectedTrick = unicodeTricks[
+			Math.floor(Math.random() * unicodeTricks.length)
+		] as (typeof unicodeTricks)[0];
 		const originalSub = token.claims.sub;
 		selectedTrick.apply();
 

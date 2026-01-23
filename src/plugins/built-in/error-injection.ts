@@ -35,8 +35,9 @@ export const errorInjection: MischiefPlugin = {
 			},
 		];
 
-		const selectedPayload =
-			errorPayloads[Math.floor(Math.random() * errorPayloads.length)] ?? errorPayloads[0];
+		const selectedPayload = errorPayloads[
+			Math.floor(Math.random() * errorPayloads.length)
+		] as (typeof errorPayloads)[0];
 
 		ctx.token.claims.error = selectedPayload.error;
 		ctx.token.claims.error_description = selectedPayload.description;

@@ -41,7 +41,9 @@ export const responseTypeConfusion: MischiefPlugin = {
 			},
 		];
 
-		const selectedAttack = attacks[Math.floor(Math.random() * attacks.length)] ?? attacks[0];
+		const selectedAttack = attacks[
+			Math.floor(Math.random() * attacks.length)
+		] as (typeof attacks)[0];
 		selectedAttack.apply();
 
 		return {

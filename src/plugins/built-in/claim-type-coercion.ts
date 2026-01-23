@@ -49,8 +49,9 @@ export const claimTypeCoercion: MischiefPlugin = {
 			},
 		];
 
-		const selectedCoercion =
-			coercions[Math.floor(Math.random() * coercions.length)] ?? coercions[0];
+		const selectedCoercion = coercions[
+			Math.floor(Math.random() * coercions.length)
+		] as (typeof coercions)[0];
 		selectedCoercion.apply();
 
 		return {
