@@ -13,7 +13,7 @@ If you discover a security vulnerability in OIDC-Loki, please report it responsi
 ### How to Report
 
 1. **Do NOT** create a public GitHub issue for security vulnerabilities
-2. Email the maintainer directly at: cbc.devel@gmail.com
+2. Use GitHub's [private vulnerability reporting](https://github.com/oidc-loki/oidc-loki/security/advisories/new)
 3. Include the following in your report:
    - Description of the vulnerability
    - Steps to reproduce

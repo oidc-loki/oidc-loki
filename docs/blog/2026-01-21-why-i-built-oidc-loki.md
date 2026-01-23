@@ -130,9 +130,9 @@ If you're trying to find bugs in your IdP (Okta, Auth0, Keycloak, etc.), this is
 npm install oidc-loki
 ```
 
-GitHub: [github.com/cbchhaya/oidc-loki](https://github.com/cbchhaya/oidc-loki)
+GitHub: [github.com/oidc-loki/oidc-loki](https://github.com/oidc-loki/oidc-loki)
 
-Examples: [github.com/cbchhaya/oidc-loki/tree/main/examples](https://github.com/cbchhaya/oidc-loki/tree/main/examples)
+Examples: [github.com/oidc-loki/oidc-loki/tree/main/examples](https://github.com/oidc-loki/oidc-loki/tree/main/examples)
 
 ---
 

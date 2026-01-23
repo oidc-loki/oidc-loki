@@ -1,9 +1,9 @@
 # OIDC-Loki
 
-[![CI](https://github.com/cbchhaya/oidc-loki/actions/workflows/ci.yml/badge.svg)](https://github.com/cbchhaya/oidc-loki/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/cbchhaya/oidc-loki/actions/workflows/codeql.yml/badge.svg)](https://github.com/cbchhaya/oidc-loki/security/code-scanning)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/cbchhaya/oidc-loki/badge)](https://securityscorecards.dev/viewer/?uri=github.com/cbchhaya/oidc-loki)
-[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/cbchhaya/oidc-loki)
+[![CI](https://github.com/oidc-loki/oidc-loki/actions/workflows/ci.yml/badge.svg)](https://github.com/oidc-loki/oidc-loki/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/oidc-loki/oidc-loki/actions/workflows/codeql.yml/badge.svg)](https://github.com/oidc-loki/oidc-loki/security/code-scanning)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/oidc-loki/oidc-loki/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oidc-loki/oidc-loki)
+[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/oidc-loki/oidc-loki)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 
