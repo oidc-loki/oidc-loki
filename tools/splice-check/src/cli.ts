@@ -90,11 +90,17 @@ function validateTestFilter(testIds: string[] | undefined): void {
 
 function printBanner(config: SpliceCheckConfig, opts: CliOptions): void {
 	if (config.output.format !== "table") return;
-	console.log("");
-	console.log("  splice-check v0.1.0");
-	console.log(`  Target: ${config.target.token_endpoint}`);
-	console.log(`  Tests:  ${opts.test ? opts.test.length : allTests.length}`);
-	console.log("");
+	const testCount = opts.test ? opts.test.length : allTests.length;
+	console.log(`
+  \x1b[33m⟐─────⟐\x1b[0m  \x1b[1msplice-check\x1b[0m v0.1.0
+  \x1b[33m│\x1b[31m ╱ ╲ \x1b[33m│\x1b[0m  \x1b[2mDelegation Chain Security Scanner\x1b[0m
+  \x1b[33m│\x1b[31m╱   ╲\x1b[33m│\x1b[0m  \x1b[2mPart of the OIDC-Loki project\x1b[0m
+  \x1b[33m⟐─────⟐\x1b[0m
+  \x1b[36m─ ─ ◆\x1b[31m ╳ \x1b[36m◆ ─ ─\x1b[0m  \x1b[2mBreaking chains, finding trust gaps\x1b[0m
+
+  Target: ${config.target.token_endpoint}
+  Tests:  ${testCount}
+`);
 }
 
 function buildRunnerOptions(config: SpliceCheckConfig, opts: CliOptions): RunnerOptions {

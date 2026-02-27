@@ -1,4 +1,10 @@
-# OIDC-Loki
+<p align="center">
+  <img src="assets/logo.svg" alt="OIDC-Loki" width="200" />
+</p>
+
+<h1 align="center">OIDC-Loki</h1>
+
+<p align="center"><strong>The Trickster Protocol</strong> — Security Chaos Engineering for OIDC</p>
 
 > **NOTICE:** This project is provided for demonstration and educational purposes only. It may NOT be used for commercial purposes. This software comes with NO WARRANTIES of any kind. Use at your own risk.
 
@@ -8,8 +14,6 @@
 [![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/oidc-loki/oidc-loki)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-
-**The Bad Identity Provider** - Security Chaos Engineering for OIDC
 
 OIDC-Loki is a programmable OIDC identity provider that intentionally violates specifications to test how resilient your OIDC client implementations are against malformed, malicious, or spec-violating responses.
 
@@ -163,13 +167,18 @@ Each plugin targets a specific vulnerability class, complete with RFC/CWE refere
 |--------|---------------|----------------|
 | `latency-injection` | Response delay for timeout testing | OIDC Core §3.1.2.1 |
 
-### Why Plugins?
+### Why "Mischief Plugins"?
 
-Plugins are modular attack scenarios that can be:
-- **Composed**: Enable multiple attacks per session for complex scenarios
-- **Audited**: Every mutation is logged with RFC/CWE references
+In the old stories, Loki didn't overpower his enemies — he *tricked* them. He shapeshifted, forged alliances that shouldn't exist, and exploited the gods' assumptions about how the world worked. The gods trusted their rules. Loki tested whether those rules actually held.
+
+That's what OIDC-Loki does to your identity infrastructure.
+
+Every attack in this tool is a **mischief plugin** — a modular, composable trick that exploits assumptions your OIDC client makes about the tokens it receives. Just as Loki never attacked the same way twice, plugins can be combined, randomized, and extended:
+
+- **Composed**: Enable multiple attacks per session — layer tricks for complex scenarios
+- **Audited**: Every act of mischief is logged with RFC/CWE references in the **Mischief Ledger**
 - **Extended**: Write custom plugins for vendor-specific or compliance testing
-- **Randomized**: Use `random` or `shuffled` modes for fuzzing
+- **Randomized**: Use `random` or `shuffled` modes — Loki is unpredictable by nature
 
 ## Session Modes
 
@@ -228,4 +237,16 @@ This project was built through human-AI collaboration using [Claude Code](https:
 
 ---
 
-*"In Norse mythology, Loki is known as a trickster god. OIDC-Loki brings that same energy to your identity infrastructure testing."*
+## Why "Loki"?
+
+In Norse mythology, Loki is the trickster god — a shapeshifter who exploits trust, forges impossible alliances, and reveals the cracks in systems the other gods believed were secure. When the gods bound him in chains as punishment, it was the chains themselves that became the story.
+
+OIDC-Loki carries that spirit into identity security:
+
+**The Trickster.** Loki doesn't play by the rules — he probes them. OIDC-Loki is a fully functional identity provider that *misbehaves on command*, testing whether your clients actually enforce the specifications they claim to follow. Every plugin is an act of mischief: signing tokens with the wrong algorithm, swapping claims, confusing audiences, breaking the assumptions your code depends on.
+
+**The Chains.** The most resonant part of Loki's mythology for this project is the chains. In the stories, the gods bound Loki in chains forged by dwarves — unbreakable links of trust. But chains are only as strong as the assumptions they encode. [splice-check](./tools/splice-check/), our delegation chain security scanner, tests whether your authorization server's delegation chains can be *spliced* — broken apart and reconnected in ways that were never authorized. Two unrelated trust chains, forged into one. The gods trusted their chains too.
+
+**The Mischief Ledger.** Every trick Loki plays is recorded. Every token mutation, every forged claim, every violated specification — logged with RFC sections and CWE references. The ledger is both audit trail and evidence: proof of what was tested and what held.
+
+The naming runs through the entire project: **mischief plugins** are the attacks, **sessions** are the isolated tricks, and the **ledger** tracks every act of chaos. When you see `loki.start()` in your test suite, you're unleashing the trickster — in a controlled, auditable, defense-only way.
