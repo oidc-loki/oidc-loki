@@ -9,18 +9,26 @@
  */
 
 import { actClaimStripping } from "./act-claim-stripping.js";
+import { actNestingIntegrity } from "./act-nesting-integrity.js";
+import { actSubVerification } from "./act-sub-verification.js";
 import { actorClientMismatch } from "./actor-client-mismatch.js";
 import { audSubBinding } from "./aud-sub-binding.js";
 import { audienceTargeting } from "./audience-targeting.js";
 import { basicSplice } from "./basic-splice.js";
+import { chainDepthExhaustion } from "./chain-depth-exhaustion.js";
+import { circularDelegation } from "./circular-delegation.js";
 import { delegationImpersonationConfusion } from "./delegation-impersonation-confusion.js";
+import { downstreamAudVerification } from "./downstream-aud-verification.js";
+import { issuedTokenTypeValidation } from "./issued-token-type-validation.js";
 import { mayActEnforcement } from "./may-act-enforcement.js";
 import { missingAud } from "./missing-aud.js";
 import { multiAudience } from "./multi-audience.js";
 import { refreshBypass } from "./refresh-bypass.js";
+import { resourceAbuse } from "./resource-abuse.js";
 import { revocationPropagation } from "./revocation-propagation.js";
 import { scopeEscalation } from "./scope-escalation.js";
 import { subjectActorSwap } from "./subject-actor-swap.js";
+import { tokenLifetimeReduction } from "./token-lifetime-reduction.js";
 import { tokenTypeEscalation } from "./token-type-escalation.js";
 import { tokenTypeMismatch } from "./token-type-mismatch.js";
 import type { AttackTest } from "./types.js";
@@ -43,12 +51,22 @@ export const allTests: AttackTest[] = [
 	tokenTypeEscalation,
 	audienceTargeting,
 	actClaimStripping,
+	resourceAbuse,
 	// Edge-case variants
 	multiAudience,
 	missingAud,
 	mayActEnforcement,
 	scopeEscalation,
 	delegationImpersonationConfusion,
+	// Output validation tests
+	issuedTokenTypeValidation,
+	downstreamAudVerification,
+	tokenLifetimeReduction,
+	actSubVerification,
+	actNestingIntegrity,
+	// Delegation chain tests
+	circularDelegation,
+	chainDepthExhaustion,
 	// Operational tests
 	refreshBypass,
 	revocationPropagation,

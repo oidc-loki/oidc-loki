@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { actClaimStripping } from "../src/tests/act-claim-stripping.js";
+import { actNestingIntegrity } from "../src/tests/act-nesting-integrity.js";
+import { actSubVerification } from "../src/tests/act-sub-verification.js";
 import { actorClientMismatch } from "../src/tests/actor-client-mismatch.js";
 import { audSubBinding } from "../src/tests/aud-sub-binding.js";
 import { audienceTargeting } from "../src/tests/audience-targeting.js";
 import { basicSplice } from "../src/tests/basic-splice.js";
+import { chainDepthExhaustion } from "../src/tests/chain-depth-exhaustion.js";
+import { circularDelegation } from "../src/tests/circular-delegation.js";
 import {
 	classifyResponse,
 	describeResponse,
@@ -13,14 +17,18 @@ import {
 	requireJsonBody,
 } from "../src/tests/classify.js";
 import { delegationImpersonationConfusion } from "../src/tests/delegation-impersonation-confusion.js";
+import { downstreamAudVerification } from "../src/tests/downstream-aud-verification.js";
 import { redactTokens, requireToken } from "../src/tests/helpers.js";
+import { issuedTokenTypeValidation } from "../src/tests/issued-token-type-validation.js";
 import { mayActEnforcement } from "../src/tests/may-act-enforcement.js";
 import { missingAud } from "../src/tests/missing-aud.js";
 import { multiAudience } from "../src/tests/multi-audience.js";
 import { refreshBypass } from "../src/tests/refresh-bypass.js";
+import { resourceAbuse } from "../src/tests/resource-abuse.js";
 import { revocationPropagation } from "../src/tests/revocation-propagation.js";
 import { scopeEscalation } from "../src/tests/scope-escalation.js";
 import { subjectActorSwap } from "../src/tests/subject-actor-swap.js";
+import { tokenLifetimeReduction } from "../src/tests/token-lifetime-reduction.js";
 import { tokenTypeEscalation } from "../src/tests/token-type-escalation.js";
 import { tokenTypeMismatch } from "../src/tests/token-type-mismatch.js";
 import type { AttackResponse, SetupResult } from "../src/tests/types.js";
@@ -896,6 +904,397 @@ describe("act-claim-stripping verify", () => {
 });
 
 // ---------------------------------------------------------------------------
+// TE-08 through TE-16: Should-have attack vectors
+// ---------------------------------------------------------------------------
+
+describe("resource-abuse verify", () => {
+	it("passes when AS rejects unauthorized resource", () => {
+		const verdict = resourceAbuse.verify(
+			makeResponse(400, { error: "invalid_target" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes on 403 rejection", () => {
+		const verdict = resourceAbuse.verify(makeResponse(403), emptySetup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS issues token for unauthorized resource", () => {
+		const verdict = resourceAbuse.verify(makeResponse(200, { access_token: "tok" }), emptySetup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on inconclusive (429)", () => {
+		const verdict = resourceAbuse.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const verdict = resourceAbuse.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("issued-token-type-validation verify", () => {
+	it("passes when response includes valid issued_token_type", () => {
+		const verdict = issuedTokenTypeValidation.verify(
+			makeResponse(200, {
+				access_token: "tok",
+				issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+			}),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when issued_token_type is missing", () => {
+		const verdict = issuedTokenTypeValidation.verify(
+			makeResponse(200, { access_token: "tok" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("issued_token_type");
+	});
+
+	it("fails when issued_token_type has unrecognized value", () => {
+		const verdict = issuedTokenTypeValidation.verify(
+			makeResponse(200, { access_token: "tok", issued_token_type: "urn:custom:bogus" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("fails when 200 but no access_token", () => {
+		const verdict = issuedTokenTypeValidation.verify(makeResponse(200, {}), emptySetup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on rejection", () => {
+		const verdict = issuedTokenTypeValidation.verify(makeResponse(400), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (401)", () => {
+		const verdict = issuedTokenTypeValidation.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("downstream-aud-verification verify", () => {
+	it("passes when JWT has aud claim", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","aud":"agent-a"}.
+		const jwtWithAud =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImF1ZCI6ImFnZW50LWEifQ.";
+		const verdict = downstreamAudVerification.verify(
+			makeResponse(200, { access_token: jwtWithAud }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when JWT has no aud claim", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice"}.
+		const jwtWithoutAud = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSJ9.";
+		const verdict = downstreamAudVerification.verify(
+			makeResponse(200, { access_token: jwtWithoutAud }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("aud");
+	});
+
+	it("skips when token is opaque", () => {
+		const verdict = downstreamAudVerification.verify(
+			makeResponse(200, { access_token: "opaque-not-jwt" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("fails when 200 but no access_token", () => {
+		const verdict = downstreamAudVerification.verify(makeResponse(200, {}), emptySetup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on rejection", () => {
+		const verdict = downstreamAudVerification.verify(makeResponse(400), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const verdict = downstreamAudVerification.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("token-lifetime-reduction verify", () => {
+	it("passes when delegated token exp ≤ original exp", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","exp":1000}.
+		const jwtWithLowerExp =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImV4cCI6MTAwMH0.";
+		const setup: SetupResult = { tokens: {}, metadata: { originalExp: 2000 } };
+		const verdict = tokenLifetimeReduction.verify(
+			makeResponse(200, { access_token: jwtWithLowerExp }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when delegated token exp > original exp", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","exp":3000}.
+		const jwtWithHigherExp =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImV4cCI6MzAwMH0.";
+		const setup: SetupResult = { tokens: {}, metadata: { originalExp: 2000 } };
+		const verdict = tokenLifetimeReduction.verify(
+			makeResponse(200, { access_token: jwtWithHigherExp }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("AFTER");
+	});
+
+	it("fails when delegated token has no exp claim", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice"}.
+		const jwtNoExp = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSJ9.";
+		const setup: SetupResult = { tokens: {}, metadata: { originalExp: 2000 } };
+		const verdict = tokenLifetimeReduction.verify(
+			makeResponse(200, { access_token: jwtNoExp }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips when original had no exp", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { originalExp: undefined } };
+		const verdict = tokenLifetimeReduction.verify(
+			makeResponse(200, { access_token: "tok" }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips when token is opaque", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { originalExp: 2000 } };
+		const verdict = tokenLifetimeReduction.verify(
+			makeResponse(200, { access_token: "opaque" }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { originalExp: 2000 } };
+		const verdict = tokenLifetimeReduction.verify(makeResponse(500), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("act-sub-verification verify", () => {
+	it("passes when act.sub matches actor identity", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-a"}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1hIn19.";
+		const setup: SetupResult = { tokens: {}, metadata: { agentASub: "agent-a" } };
+		const verdict = actSubVerification.verify(makeResponse(200, { access_token: jwt }), setup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when act.sub does not match actor identity", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"wrong-agent"}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJ3cm9uZy1hZ2VudCJ9fQ.";
+		const setup: SetupResult = { tokens: {}, metadata: { agentASub: "agent-a" } };
+		const verdict = actSubVerification.verify(makeResponse(200, { access_token: jwt }), setup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("passes when act.sub present but agent sub unknown", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-a"}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1hIn19.";
+		const setup: SetupResult = { tokens: {}, metadata: {} };
+		const verdict = actSubVerification.verify(makeResponse(200, { access_token: jwt }), setup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("skips when no act claim (defers to other test)", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice"}.
+		const jwt = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSJ9.";
+		const setup: SetupResult = { tokens: {}, metadata: {} };
+		const verdict = actSubVerification.verify(makeResponse(200, { access_token: jwt }), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on rejection", () => {
+		const setup: SetupResult = { tokens: {}, metadata: {} };
+		const verdict = actSubVerification.verify(makeResponse(400), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (429)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: {} };
+		const verdict = actSubVerification.verify(makeResponse(429), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("act-nesting-integrity verify", () => {
+	it("passes when act chain is intact with nested act", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-n","act":{"sub":"agent-a"}}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1uIiwiYWN0Ijp7InN1YiI6ImFnZW50LWEifX19.";
+		const verdict = actNestingIntegrity.verify(
+			makeResponse(200, { access_token: jwt }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes when act chain is single hop (no nested act)", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-n"}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1uIn19.";
+		const verdict = actNestingIntegrity.verify(
+			makeResponse(200, { access_token: jwt }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when no act claim present", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice"}.
+		const jwt = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSJ9.";
+		const verdict = actNestingIntegrity.verify(
+			makeResponse(200, { access_token: jwt }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("fails when act has non-identity claims leaked (exp)", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-n","exp":9999}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1uIiwiZXhwIjo5OTk5fX0.";
+		const verdict = actNestingIntegrity.verify(
+			makeResponse(200, { access_token: jwt }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("exp");
+	});
+
+	it("fails when act has no sub", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"client_id":"agent-n"}}.
+		const jwt =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJjbGllbnRfaWQiOiJhZ2VudC1uIn19.";
+		const verdict = actNestingIntegrity.verify(
+			makeResponse(200, { access_token: jwt }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips when token is opaque", () => {
+		const verdict = actNestingIntegrity.verify(
+			makeResponse(200, { access_token: "opaque" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on rejection", () => {
+		const verdict = actNestingIntegrity.verify(makeResponse(400), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const verdict = actNestingIntegrity.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("circular-delegation verify", () => {
+	it("passes when AS rejects circular delegation", () => {
+		const verdict = circularDelegation.verify(
+			makeResponse(400, { error: "invalid_grant" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes on 403 rejection", () => {
+		const verdict = circularDelegation.verify(makeResponse(403), emptySetup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS accepts circular delegation", () => {
+		const verdict = circularDelegation.verify(
+			makeResponse(200, { access_token: "circular-tok" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("circular");
+	});
+
+	it("skips on inconclusive (429)", () => {
+		const verdict = circularDelegation.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const verdict = circularDelegation.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("chain-depth-exhaustion verify", () => {
+	it("passes when AS rejected during setup (depth limit enforced)", () => {
+		const setup: SetupResult = {
+			tokens: {},
+			metadata: { rejectedAtDepth: 3, depthReached: 2 },
+		};
+		const verdict = chainDepthExhaustion.verify(
+			makeResponse(400, { error: "chain_depth_exceeded" }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes when AS rejects the final depth push", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { depthReached: 4 } };
+		const verdict = chainDepthExhaustion.verify(
+			makeResponse(400, { error: "invalid_grant" }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS accepts unbounded chain depth", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { depthReached: 4 } };
+		const verdict = chainDepthExhaustion.verify(
+			makeResponse(200, { access_token: "deep-tok" }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("depth");
+	});
+
+	it("skips on inconclusive (429)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { depthReached: 4 } };
+		const verdict = chainDepthExhaustion.verify(makeResponse(429), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { depthReached: 4 } };
+		const verdict = chainDepthExhaustion.verify(makeResponse(500), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Test metadata
 // ---------------------------------------------------------------------------
 
@@ -921,9 +1320,9 @@ describe("test metadata", () => {
 		}
 	});
 
-	it("has expected number of tests (18)", async () => {
+	it("has expected number of tests (26)", async () => {
 		const { allTests: tests } = await import("../src/tests/index.js");
-		expect(tests).toHaveLength(18);
+		expect(tests).toHaveLength(26);
 	});
 });
 
