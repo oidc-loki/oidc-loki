@@ -8,7 +8,7 @@
  */
 
 import { decodeJwt } from "jose";
-import { describeResponse, isSecurityRejection } from "./classify.js";
+import { describeResponse, isInconclusive, isSecurityRejection } from "./classify.js";
 import { requireToken } from "./helpers.js";
 import type { AttackTest } from "./types.js";
 import { TOKEN_TYPE } from "./types.js";
@@ -71,10 +71,10 @@ export const mayActEnforcement: AttackTest = {
 					reason: `AS rejected exchange (may_act not present, but AS still validated) — ${describeResponse(response)}`,
 				};
 			}
-			if (response.status >= 400) {
+			if (isInconclusive(response)) {
 				return {
-					passed: true,
-					reason: `AS rejected exchange — ${describeResponse(response)}`,
+					skipped: true,
+					reason: `Inconclusive: ${describeResponse(response)}`,
 				};
 			}
 			return {
@@ -93,10 +93,10 @@ export const mayActEnforcement: AttackTest = {
 			};
 		}
 
-		if (response.status >= 400) {
+		if (isInconclusive(response)) {
 			return {
-				passed: true,
-				reason: `AS rejected unauthorized actor — ${describeResponse(response)}`,
+				skipped: true,
+				reason: `Inconclusive: ${describeResponse(response)}`,
 			};
 		}
 

@@ -102,8 +102,8 @@ describe("runTests", () => {
 		const result = await runTests(tests, mockConfig, mockClient);
 		expect(result.summary.skipped).toBe(1);
 		const verdict = result.results[0]?.verdict;
-		expect(verdict && "skipped" in verdict && verdict.skipped).toBe(true);
-		expect(verdict && "reason" in verdict && verdict.reason).toContain("Setup failed");
+		expect(verdict).toHaveProperty("skipped", true);
+		expect(verdict).toHaveProperty("reason", expect.stringContaining("Setup failed"));
 	});
 
 	it("handles attack phase errors (marks as failed)", async () => {
@@ -119,7 +119,8 @@ describe("runTests", () => {
 		const result = await runTests(tests, mockConfig, mockClient);
 		expect(result.summary.failed).toBe(1);
 		const verdict = result.results[0]?.verdict;
-		expect(verdict && "passed" in verdict && !verdict.passed).toBe(true);
+		expect(verdict).toHaveProperty("passed", false);
+		expect(verdict).toHaveProperty("reason");
 	});
 
 	it("filters tests by ID", async () => {
@@ -185,14 +186,16 @@ describe("runTests", () => {
 	it("tracks total duration", async () => {
 		const tests = [makeTest({ id: "timed-test" })];
 		const result = await runTests(tests, mockConfig, mockClient);
+		expect(result.summary.durationMs).toBeTypeOf("number");
 		expect(result.summary.durationMs).toBeGreaterThanOrEqual(0);
 	});
 
-	it("includes test metadata in results", async () => {
+	it("includes test metadata in results (excludes non-display fields)", async () => {
 		const tests = [
 			makeTest({
 				id: "meta-test",
 				name: "Meta Test",
+				description: "Description should NOT appear in output",
 				severity: "critical",
 				spec: "RFC 8693",
 			}),
@@ -205,6 +208,58 @@ describe("runTests", () => {
 			severity: "critical",
 			spec: "RFC 8693",
 		});
+		// Verify non-display fields are excluded
+		expect(result.results[0]?.test).not.toHaveProperty("description");
+		expect(result.results[0]?.test).not.toHaveProperty("setup");
+		expect(result.results[0]?.test).not.toHaveProperty("attack");
+		expect(result.results[0]?.test).not.toHaveProperty("verify");
+	});
+
+	it("wires setup output through attack into verify correctly", async () => {
+		// Validates data flow: setup → attack → verify (critical issue 7.1)
+		const setupTokenValue = "unique-setup-token-12345";
+		const attackResponseBody = { access_token: "attack-result-67890" };
+		let attackReceivedSetup: unknown = null;
+
+		const tests = [
+			makeTest({
+				id: "data-flow-test",
+				setup: async () => ({
+					tokens: { testToken: setupTokenValue },
+					metadata: { marker: "from-setup" },
+				}),
+				attack: async (_ctx, setup) => {
+					// Capture what the runner passes to attack()
+					attackReceivedSetup = setup;
+					return { status: 200, body: attackResponseBody, headers: {}, durationMs: 5 };
+				},
+				verify: (response, setup) => {
+					// Verify correct response and setup are wired through
+					const correctResponse = response.status === 200 && response.body === attackResponseBody;
+					const correctSetup =
+						setup.tokens.testToken === setupTokenValue &&
+						(setup.metadata as Record<string, unknown>)?.marker === "from-setup";
+					if (correctResponse && correctSetup) {
+						return { passed: true, reason: "Data flow verified" };
+					}
+					return {
+						passed: false,
+						reason: "Data flow broken",
+						expected: "setup and attack response correctly wired",
+						actual: `response=${JSON.stringify(response)}, setup=${JSON.stringify(setup)}`,
+					};
+				},
+			}),
+		];
+
+		const result = await runTests(tests, mockConfig, mockClient);
+		expect(result.results[0]?.verdict).toHaveProperty("passed", true);
+		// Also verify attack received the correct setup
+		expect(attackReceivedSetup).toHaveProperty("tokens");
+		expect((attackReceivedSetup as Record<string, unknown>).tokens).toHaveProperty(
+			"testToken",
+			setupTokenValue,
+		);
 	});
 
 	it("bails on baseline failure when bailOnBaselineFailure is set", async () => {
@@ -229,7 +284,7 @@ describe("runTests", () => {
 		expect(result.summary.failed).toBe(1);
 		expect(result.summary.skipped).toBe(2);
 		const skipped = result.results[1]?.verdict;
-		expect(skipped && "skipped" in skipped && skipped.skipped).toBe(true);
+		expect(skipped).toHaveProperty("skipped", true);
 	});
 
 	it("does not bail when bailOnBaselineFailure is false", async () => {

@@ -93,6 +93,44 @@ export class OAuthClient {
 	}
 
 	/**
+	 * Perform a raw (unauthenticated) token exchange request.
+	 *
+	 * Sends exchange parameters WITHOUT any client authentication.
+	 * Used by TE-02 to verify the AS requires client auth.
+	 */
+	async rawTokenExchange(params: URLSearchParams): Promise<AttackResponse> {
+		const headers: Record<string, string> = {
+			"Content-Type": "application/x-www-form-urlencoded",
+			Accept: "application/json",
+		};
+
+		const timeout = this.target.timeout ?? 30_000;
+		const start = performance.now();
+		const response = await fetch(this.target.token_endpoint, {
+			method: "POST",
+			headers,
+			body: params.toString(),
+			signal: AbortSignal.timeout(timeout),
+		});
+		const durationMs = Math.round(performance.now() - start);
+
+		const responseHeaders: Record<string, string> = {};
+		response.headers.forEach((value, key) => {
+			responseHeaders[key] = value;
+		});
+
+		let body: unknown;
+		const contentType = response.headers.get("content-type") ?? "";
+		if (contentType.includes("application/json")) {
+			body = await response.json();
+		} else {
+			body = await response.text();
+		}
+
+		return { status: response.status, body, headers: responseHeaders, durationMs };
+	}
+
+	/**
 	 * Refresh a token using the refresh_token grant.
 	 */
 	async refreshToken(refreshToken: string, clientName: string): Promise<AttackResponse> {

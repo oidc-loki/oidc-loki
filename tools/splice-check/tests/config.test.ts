@@ -275,7 +275,8 @@ client_secret = "s"
 
 		const config = loadConfig(path);
 		expect(config.clients.alice?.client_secret).toBe("env-secret-val");
-		process.env.TEST_SC_SECRET = undefined;
+		// biome-ignore lint/performance/noDelete: process.env requires delete to actually remove the key (assignment sets it to string "undefined")
+		delete process.env.TEST_SC_SECRET;
 	});
 
 	it("throws on unset environment variable", () => {

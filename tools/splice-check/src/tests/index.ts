@@ -8,8 +8,10 @@
  *   4. Operational tests (refresh, revocation) run last
  */
 
+import { actClaimStripping } from "./act-claim-stripping.js";
 import { actorClientMismatch } from "./actor-client-mismatch.js";
 import { audSubBinding } from "./aud-sub-binding.js";
+import { audienceTargeting } from "./audience-targeting.js";
 import { basicSplice } from "./basic-splice.js";
 import { delegationImpersonationConfusion } from "./delegation-impersonation-confusion.js";
 import { mayActEnforcement } from "./may-act-enforcement.js";
@@ -19,7 +21,10 @@ import { refreshBypass } from "./refresh-bypass.js";
 import { revocationPropagation } from "./revocation-propagation.js";
 import { scopeEscalation } from "./scope-escalation.js";
 import { subjectActorSwap } from "./subject-actor-swap.js";
+import { tokenTypeEscalation } from "./token-type-escalation.js";
+import { tokenTypeMismatch } from "./token-type-mismatch.js";
 import type { AttackTest } from "./types.js";
+import { unauthenticatedExchange } from "./unauthenticated-exchange.js";
 import { upstreamSplice } from "./upstream-splice.js";
 import { validDelegation } from "./valid-delegation.js";
 
@@ -32,6 +37,12 @@ export const allTests: AttackTest[] = [
 	audSubBinding,
 	upstreamSplice,
 	subjectActorSwap,
+	// Input validation attacks
+	tokenTypeMismatch,
+	unauthenticatedExchange,
+	tokenTypeEscalation,
+	audienceTargeting,
+	actClaimStripping,
 	// Edge-case variants
 	multiAudience,
 	missingAud,

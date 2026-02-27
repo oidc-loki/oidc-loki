@@ -115,9 +115,10 @@ describe("formatResults", () => {
 		it("produces valid JSON", () => {
 			const output = formatResults(passResult, "json");
 			const parsed = JSON.parse(output);
-			expect(parsed).toBeDefined();
+			expect(parsed).toHaveProperty("results");
 			expect(parsed.results).toHaveLength(2);
-			expect(parsed.summary).toBeDefined();
+			expect(parsed).toHaveProperty("summary");
+			expect(parsed.summary).toHaveProperty("total", 2);
 		});
 
 		it("includes expected/actual for failures", () => {

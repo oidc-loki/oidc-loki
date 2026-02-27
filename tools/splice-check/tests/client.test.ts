@@ -1,4 +1,5 @@
-import { type Server, createServer } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
+import { createServer } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { OAuthClient, OAuthError } from "../src/client.js";
 import type { ClientConfig, TargetConfig } from "../src/config.js";
@@ -26,6 +27,74 @@ const testClients: Record<string, ClientConfig> = {
 	"agent-n": { client_id: "agent-n", client_secret: "agent-n-secret" },
 };
 
+function handleTokenRequest(params: URLSearchParams, res: ServerResponse): void {
+	const grantType = params.get("grant_type");
+
+	if (grantType === "client_credentials") {
+		res.writeHead(200);
+		res.end(
+			JSON.stringify({
+				access_token: `mock-token-${params.get("client_id")}`,
+				token_type: "Bearer",
+				expires_in: 3600,
+			}),
+		);
+	} else if (grantType === "urn:ietf:params:oauth:grant-type:token-exchange") {
+		handleExchangeRequest(params, res);
+	} else if (grantType === "refresh_token") {
+		res.writeHead(200);
+		res.end(JSON.stringify({ access_token: "refreshed-token", token_type: "Bearer" }));
+	} else {
+		res.writeHead(400);
+		res.end(JSON.stringify({ error: "unsupported_grant_type" }));
+	}
+}
+
+function handleExchangeRequest(params: URLSearchParams, res: ServerResponse): void {
+	const subjectToken = params.get("subject_token");
+	const actorToken = params.get("actor_token");
+
+	// Simulate: reject if subject and actor are from different chains
+	if (subjectToken?.includes("alice") && actorToken?.includes("agent-n")) {
+		res.writeHead(400);
+		res.end(
+			JSON.stringify({
+				error: "invalid_grant",
+				error_description: "Cross-chain splice rejected",
+			}),
+		);
+	} else {
+		res.writeHead(200);
+		res.end(
+			JSON.stringify({
+				access_token: "mock-exchanged-token",
+				token_type: "Bearer",
+				issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+			}),
+		);
+	}
+}
+
+function handleIntrospectRequest(params: URLSearchParams, res: ServerResponse): void {
+	const token = params.get("token");
+	res.writeHead(200);
+	res.end(JSON.stringify({ active: token !== "revoked-token" }));
+}
+
+function routeRequest(req: IncomingMessage, params: URLSearchParams, res: ServerResponse): void {
+	if (req.url === "/oauth2/token") {
+		handleTokenRequest(params, res);
+	} else if (req.url === "/oauth2/revoke") {
+		res.writeHead(200);
+		res.end("{}");
+	} else if (req.url === "/oauth2/introspect") {
+		handleIntrospectRequest(params, res);
+	} else {
+		res.writeHead(404);
+		res.end(JSON.stringify({ error: "not_found" }));
+	}
+}
+
 beforeAll(async () => {
 	mockAS = createServer((req, res) => {
 		let body = "";
@@ -39,62 +108,9 @@ beforeAll(async () => {
 			}
 			requests.push({ path: req.url ?? "", body, headers });
 
-			const params = new URLSearchParams(body);
-			const grantType = params.get("grant_type");
-
 			res.setHeader("Content-Type", "application/json");
-
-			if (req.url === "/oauth2/token") {
-				if (grantType === "client_credentials") {
-					res.writeHead(200);
-					res.end(
-						JSON.stringify({
-							access_token: `mock-token-${params.get("client_id")}`,
-							token_type: "Bearer",
-							expires_in: 3600,
-						}),
-					);
-				} else if (grantType === "urn:ietf:params:oauth:grant-type:token-exchange") {
-					const subjectToken = params.get("subject_token");
-					const actorToken = params.get("actor_token");
-
-					// Simulate: reject if subject and actor are from different chains
-					if (subjectToken?.includes("alice") && actorToken?.includes("agent-n")) {
-						res.writeHead(400);
-						res.end(
-							JSON.stringify({
-								error: "invalid_grant",
-								error_description: "Cross-chain splice rejected",
-							}),
-						);
-					} else {
-						res.writeHead(200);
-						res.end(
-							JSON.stringify({
-								access_token: "mock-exchanged-token",
-								token_type: "Bearer",
-								issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
-							}),
-						);
-					}
-				} else if (grantType === "refresh_token") {
-					res.writeHead(200);
-					res.end(JSON.stringify({ access_token: "refreshed-token", token_type: "Bearer" }));
-				} else {
-					res.writeHead(400);
-					res.end(JSON.stringify({ error: "unsupported_grant_type" }));
-				}
-			} else if (req.url === "/oauth2/revoke") {
-				res.writeHead(200);
-				res.end("{}");
-			} else if (req.url === "/oauth2/introspect") {
-				const token = params.get("token");
-				res.writeHead(200);
-				res.end(JSON.stringify({ active: token !== "revoked-token" }));
-			} else {
-				res.writeHead(404);
-				res.end(JSON.stringify({ error: "not_found" }));
-			}
+			const params = new URLSearchParams(body);
+			routeRequest(req, params, res);
 		});
 	});
 
@@ -213,13 +229,40 @@ describe("OAuthClient", () => {
 			expect(response.status).toBe(200);
 			expect((response.body as Record<string, unknown>).access_token).toBe("refreshed-token");
 		});
+
+		it("sends correct refresh_token in request body", async () => {
+			const client = new OAuthClient(makeTarget(baseUrl), testClients);
+			requests.length = 0;
+			await client.refreshToken("refresh-token-xyz", "agent-a");
+			const lastRequest = requests[requests.length - 1];
+			const params = new URLSearchParams(lastRequest?.body);
+			expect(params.get("grant_type")).toBe("refresh_token");
+			expect(params.get("refresh_token")).toBe("refresh-token-xyz");
+			expect(params.get("client_id")).toBe("agent-a");
+		});
 	});
 
 	describe("revokeToken", () => {
-		it("revokes a token", async () => {
+		it("revokes a token and sends correct parameters", async () => {
 			const client = new OAuthClient(makeTarget(baseUrl), testClients);
+			requests.length = 0;
 			const response = await client.revokeToken("some-token", "alice", "access_token");
 			expect(response.status).toBe(200);
+			const lastRequest = requests[requests.length - 1];
+			expect(lastRequest?.path).toBe("/oauth2/revoke");
+			const params = new URLSearchParams(lastRequest?.body);
+			expect(params.get("token")).toBe("some-token");
+			expect(params.get("token_type_hint")).toBe("access_token");
+		});
+
+		it("revokes a token without token_type_hint", async () => {
+			const client = new OAuthClient(makeTarget(baseUrl), testClients);
+			requests.length = 0;
+			await client.revokeToken("some-token", "alice");
+			const lastRequest = requests[requests.length - 1];
+			const params = new URLSearchParams(lastRequest?.body);
+			expect(params.get("token")).toBe("some-token");
+			expect(params.has("token_type_hint")).toBe(false);
 		});
 	});
 
@@ -236,6 +279,47 @@ describe("OAuthClient", () => {
 			const response = await client.introspectToken("revoked-token", "agent-a");
 			expect(response.status).toBe(200);
 			expect((response.body as Record<string, unknown>).active).toBe(false);
+		});
+
+		it("sends correct token and endpoint", async () => {
+			const client = new OAuthClient(makeTarget(baseUrl), testClients);
+			requests.length = 0;
+			await client.introspectToken("test-token-abc", "agent-a");
+			const lastRequest = requests[requests.length - 1];
+			expect(lastRequest?.path).toBe("/oauth2/introspect");
+			const params = new URLSearchParams(lastRequest?.body);
+			expect(params.get("token")).toBe("test-token-abc");
+		});
+	});
+
+	describe("tokenExchange resource parameter", () => {
+		it("includes single resource in request", async () => {
+			const client = new OAuthClient(makeTarget(baseUrl), testClients);
+			requests.length = 0;
+			await client.tokenExchange({
+				subject_token: "token",
+				subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+				resource: "https://api.example.com",
+				clientName: "agent-a",
+			});
+			const lastRequest = requests[requests.length - 1];
+			const params = new URLSearchParams(lastRequest?.body);
+			expect(params.get("resource")).toBe("https://api.example.com");
+		});
+
+		it("includes multiple resource values", async () => {
+			const client = new OAuthClient(makeTarget(baseUrl), testClients);
+			requests.length = 0;
+			await client.tokenExchange({
+				subject_token: "token",
+				subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+				resource: ["https://api1.example.com", "https://api2.example.com"],
+				clientName: "agent-a",
+			});
+			const lastRequest = requests[requests.length - 1];
+			const params = new URLSearchParams(lastRequest?.body);
+			const resources = params.getAll("resource");
+			expect(resources).toEqual(["https://api1.example.com", "https://api2.example.com"]);
 		});
 	});
 

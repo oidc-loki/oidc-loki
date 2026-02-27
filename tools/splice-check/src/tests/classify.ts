@@ -21,6 +21,7 @@ export type ResponseCategory =
 	| "auth_error"
 	| "rate_limit"
 	| "server_error"
+	| "unsupported"
 	| "unknown";
 
 /** OAuth error codes that indicate a security-relevant rejection */
@@ -28,12 +29,19 @@ const SECURITY_REJECTION_ERRORS = new Set([
 	"invalid_grant",
 	"invalid_target",
 	"invalid_request",
+	"invalid_scope",
 	"unauthorized_client",
 	"access_denied",
 ]);
 
 /** OAuth error codes that indicate client auth failure (not security rejection) */
 const AUTH_ERROR_CODES = new Set(["invalid_client"]);
+
+/**
+ * OAuth error codes that indicate the AS does not support the requested feature.
+ * These are inconclusive — the AS can't be tested for a feature it doesn't support.
+ */
+const UNSUPPORTED_ERRORS = new Set(["unsupported_grant_type", "unsupported_response_type"]);
 
 export function classifyResponse(response: AttackResponse): ResponseCategory {
 	if (response.status >= 200 && response.status < 300) {
@@ -52,21 +60,28 @@ export function classifyResponse(response: AttackResponse): ResponseCategory {
 		return "auth_error";
 	}
 
-	// For 400/403, inspect the error code to distinguish security rejection from auth error
 	if (response.status === 400 || response.status === 403) {
-		const errorCode = extractErrorCode(response);
-		if (errorCode && AUTH_ERROR_CODES.has(errorCode)) {
-			return "auth_error";
-		}
-		if (errorCode && SECURITY_REJECTION_ERRORS.has(errorCode)) {
-			return "security_rejection";
-		}
-		// 400/403 without recognizable error code — assume security rejection
-		// (the AS may not follow the standard error format)
-		return "security_rejection";
+		return classifyByErrorCode(response);
 	}
 
 	return "unknown";
+}
+
+/** Classify 400/403 responses by inspecting the OAuth error code */
+function classifyByErrorCode(response: AttackResponse): ResponseCategory {
+	const errorCode = extractErrorCode(response);
+	if (errorCode && AUTH_ERROR_CODES.has(errorCode)) {
+		return "auth_error";
+	}
+	if (errorCode && UNSUPPORTED_ERRORS.has(errorCode)) {
+		return "unsupported";
+	}
+	if (errorCode && SECURITY_REJECTION_ERRORS.has(errorCode)) {
+		return "security_rejection";
+	}
+	// 400/403 without recognizable error code — assume security rejection
+	// (the AS may not follow the standard error format)
+	return "security_rejection";
 }
 
 /**
@@ -87,7 +102,13 @@ export function isSecurityRejection(response: AttackResponse): boolean {
  */
 export function isInconclusive(response: AttackResponse): boolean {
 	const category = classifyResponse(response);
-	return category === "auth_error" || category === "rate_limit" || category === "server_error";
+	return (
+		category === "auth_error" ||
+		category === "rate_limit" ||
+		category === "server_error" ||
+		category === "unsupported" ||
+		category === "unknown"
+	);
 }
 
 /**
@@ -139,6 +160,8 @@ export function describeResponse(response: AttackResponse): string {
 			return `HTTP ${response.status} rate limited`;
 		case "server_error":
 			return `HTTP ${response.status} server error`;
+		case "unsupported":
+			return `HTTP ${response.status} unsupported${suffix}`;
 		default:
 			return `HTTP ${response.status}${suffix}`;
 	}

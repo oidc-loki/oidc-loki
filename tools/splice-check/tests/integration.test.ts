@@ -1,4 +1,5 @@
-import { type Server, createServer } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
+import { createServer } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { OAuthClient } from "../src/client.js";
 import type { SpliceCheckConfig } from "../src/config.js";
@@ -7,22 +8,12 @@ import { runTests } from "../src/runner.js";
 import { allTests } from "../src/tests/index.js";
 
 // ---------------------------------------------------------------------------
-// Mock AS that simulates a VULNERABLE Authorization Server
-// (accepts all token exchanges without validation)
+// Shared mock AS utilities
 // ---------------------------------------------------------------------------
 
-let vulnerableAS: Server;
-let vulnerableUrl: string;
+type MockHandler = (params: URLSearchParams, req: IncomingMessage, res: ServerResponse) => void;
 
-// ---------------------------------------------------------------------------
-// Mock AS that simulates a SECURE Authorization Server
-// (rejects cross-chain exchanges, enforces aud/sub binding)
-// ---------------------------------------------------------------------------
-
-let secureAS: Server;
-let secureUrl: string;
-
-function createVulnerableAS(): Server {
+function createMockAS(routes: Record<string, MockHandler>): Server {
 	return createServer((req, res) => {
 		let body = "";
 		req.on("data", (chunk) => {
@@ -31,98 +22,9 @@ function createVulnerableAS(): Server {
 		req.on("end", () => {
 			res.setHeader("Content-Type", "application/json");
 			const params = new URLSearchParams(body);
-			const grantType = params.get("grant_type");
-
-			if (grantType === "client_credentials") {
-				const clientId = params.get("client_id") ?? "unknown";
-				res.writeHead(200);
-				res.end(
-					JSON.stringify({
-						access_token: `token-${clientId}-${Date.now()}`,
-						token_type: "Bearer",
-						expires_in: 3600,
-					}),
-				);
-			} else if (grantType === "urn:ietf:params:oauth:grant-type:token-exchange") {
-				// Vulnerable: accepts ALL exchanges without validation
-				res.writeHead(200);
-				res.end(
-					JSON.stringify({
-						access_token: `exchanged-${Date.now()}`,
-						token_type: "Bearer",
-						issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
-						refresh_token: `refresh-${Date.now()}`,
-					}),
-				);
-			} else if (grantType === "refresh_token") {
-				res.writeHead(200);
-				res.end(JSON.stringify({ access_token: `refreshed-${Date.now()}`, token_type: "Bearer" }));
-			} else {
-				res.writeHead(400);
-				res.end(JSON.stringify({ error: "unsupported_grant_type" }));
-			}
-		});
-	});
-}
-
-function createSecureAS(): Server {
-	return createServer((req, res) => {
-		let body = "";
-		req.on("data", (chunk) => {
-			body += chunk;
-		});
-		req.on("end", () => {
-			res.setHeader("Content-Type", "application/json");
-			const params = new URLSearchParams(body);
-			const grantType = params.get("grant_type");
-			const clientId = params.get("client_id") ?? "unknown";
-
-			if (req.url === "/oauth2/token") {
-				if (grantType === "client_credentials") {
-					res.writeHead(200);
-					res.end(
-						JSON.stringify({
-							access_token: `token-${clientId}`,
-							token_type: "Bearer",
-							expires_in: 3600,
-						}),
-					);
-				} else if (grantType === "urn:ietf:params:oauth:grant-type:token-exchange") {
-					const subjectToken = params.get("subject_token") ?? "";
-					const actorToken = params.get("actor_token");
-
-					// Secure: reject if actor_token is present and from different chain
-					if (actorToken && !subjectToken.includes(clientId)) {
-						res.writeHead(400);
-						res.end(
-							JSON.stringify({
-								error: "invalid_grant",
-								error_description: "actor_token.sub does not match subject_token.aud",
-							}),
-						);
-					} else {
-						res.writeHead(200);
-						res.end(
-							JSON.stringify({
-								access_token: `exchanged-${clientId}`,
-								token_type: "Bearer",
-								issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
-							}),
-						);
-					}
-				} else if (grantType === "refresh_token") {
-					res.writeHead(200);
-					res.end(JSON.stringify({ access_token: "refreshed", token_type: "Bearer" }));
-				} else {
-					res.writeHead(400);
-					res.end(JSON.stringify({ error: "unsupported_grant_type" }));
-				}
-			} else if (req.url === "/oauth2/revoke") {
-				res.writeHead(200);
-				res.end("{}");
-			} else if (req.url === "/oauth2/introspect") {
-				res.writeHead(200);
-				res.end(JSON.stringify({ active: false }));
+			const handler = routes[req.url ?? ""];
+			if (handler) {
+				handler(params, req, res);
 			} else {
 				res.writeHead(404);
 				res.end(JSON.stringify({ error: "not_found" }));
@@ -130,6 +32,129 @@ function createSecureAS(): Server {
 		});
 	});
 }
+
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
+	res.writeHead(status);
+	res.end(JSON.stringify(body));
+}
+
+// ---------------------------------------------------------------------------
+// Mock AS: VULNERABLE (accepts all token exchanges without validation)
+// ---------------------------------------------------------------------------
+
+let vulnerableAS: Server;
+let vulnerableUrl: string;
+
+function vulnerableTokenHandler(
+	params: URLSearchParams,
+	_req: IncomingMessage,
+	res: ServerResponse,
+): void {
+	const grantType = params.get("grant_type");
+	if (grantType === "client_credentials") {
+		const clientId = params.get("client_id") ?? "unknown";
+		sendJson(res, 200, {
+			access_token: `token-${clientId}-${Date.now()}`,
+			token_type: "Bearer",
+			expires_in: 3600,
+		});
+	} else if (grantType === "urn:ietf:params:oauth:grant-type:token-exchange") {
+		// Vulnerable: accepts ALL exchanges without validation
+		sendJson(res, 200, {
+			access_token: `exchanged-${Date.now()}`,
+			token_type: "Bearer",
+			issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+			refresh_token: `refresh-${Date.now()}`,
+		});
+	} else if (grantType === "refresh_token") {
+		sendJson(res, 200, { access_token: `refreshed-${Date.now()}`, token_type: "Bearer" });
+	} else {
+		sendJson(res, 400, { error: "unsupported_grant_type" });
+	}
+}
+
+function createVulnerableAS(): Server {
+	return createMockAS({
+		"/oauth2/token": vulnerableTokenHandler,
+		"/oauth2/revoke": (_params, _req, res) => {
+			// Vulnerable: accepts revocation but doesn't actually invalidate anything
+			sendJson(res, 200, {});
+		},
+		"/oauth2/introspect": (_params, _req, res) => {
+			// Vulnerable: always says tokens are active (never propagates revocation)
+			sendJson(res, 200, { active: true });
+		},
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Mock AS: SECURE (rejects cross-chain exchanges, enforces aud/sub binding)
+// ---------------------------------------------------------------------------
+
+let secureAS: Server;
+let secureUrl: string;
+
+function secureTokenHandler(
+	params: URLSearchParams,
+	_req: IncomingMessage,
+	res: ServerResponse,
+): void {
+	const grantType = params.get("grant_type");
+	const clientId = params.get("client_id") ?? "unknown";
+
+	if (grantType === "client_credentials") {
+		sendJson(res, 200, {
+			access_token: `token-${clientId}`,
+			token_type: "Bearer",
+			expires_in: 3600,
+		});
+	} else if (grantType === "urn:ietf:params:oauth:grant-type:token-exchange") {
+		secureExchangeHandler(params, clientId, res);
+	} else if (grantType === "refresh_token") {
+		sendJson(res, 200, { access_token: "refreshed", token_type: "Bearer" });
+	} else {
+		sendJson(res, 400, { error: "unsupported_grant_type" });
+	}
+}
+
+function secureExchangeHandler(
+	params: URLSearchParams,
+	clientId: string,
+	res: ServerResponse,
+): void {
+	const subjectToken = params.get("subject_token") ?? "";
+	const actorToken = params.get("actor_token");
+
+	// Secure: reject if actor_token is present and from different chain
+	if (actorToken && !subjectToken.includes(clientId)) {
+		sendJson(res, 400, {
+			error: "invalid_grant",
+			error_description: "actor_token.sub does not match subject_token.aud",
+		});
+	} else {
+		sendJson(res, 200, {
+			access_token: `exchanged-${clientId}`,
+			token_type: "Bearer",
+			issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+		});
+	}
+}
+
+function createSecureAS(): Server {
+	return createMockAS({
+		"/oauth2/token": secureTokenHandler,
+		"/oauth2/revoke": (_params, _req, res) => {
+			sendJson(res, 200, {});
+		},
+		"/oauth2/introspect": (_params, _req, res) => {
+			sendJson(res, 200, { active: false });
+		},
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Server lifecycle
+// ---------------------------------------------------------------------------
 
 async function startServer(server: Server): Promise<string> {
 	return new Promise<string>((resolve) => {
@@ -172,6 +197,8 @@ function makeConfig(url: string): SpliceCheckConfig {
 			jwks_endpoint: `${url}/oauth2/jwks`,
 			issuer: url,
 			auth: { method: "client_secret_post" },
+			revocation_endpoint: `${url}/oauth2/revoke`,
+			introspection_endpoint: `${url}/oauth2/introspect`,
 		},
 		clients: {
 			alice: { client_id: "alice-app", client_secret: "alice-secret", scope: "openid" },
@@ -186,7 +213,11 @@ describe("Integration: vulnerable AS", () => {
 	it("baseline passes (AS accepts valid exchange)", async () => {
 		const config = makeConfig(vulnerableUrl);
 		const client = new OAuthClient(config.target, config.clients);
-		const result = await runTests(allTests.slice(0, 1), config, client);
+		const result = await runTests(
+			allTests.filter((t) => t.id === "valid-delegation"),
+			config,
+			client,
+		);
 
 		expect(result.results[0]?.verdict).toHaveProperty("passed", true);
 	});
@@ -200,17 +231,31 @@ describe("Integration: vulnerable AS", () => {
 			client,
 		);
 
-		const verdict = result.results[0]?.verdict;
-		expect(verdict && "passed" in verdict && verdict.passed).toBe(false);
+		expect(result.results[0]?.verdict).toHaveProperty("passed", false);
 	});
 
-	it("runs all tests and finds failures", async () => {
+	it("runs all tests and detects specific vulnerabilities", async () => {
 		const config = makeConfig(vulnerableUrl);
 		const client = new OAuthClient(config.target, config.clients);
 		const result = await runTests(allTests, config, client);
 
-		expect(result.summary.total).toBe(13);
-		expect(result.summary.failed).toBeGreaterThan(0);
+		expect(result.summary.total).toBe(18);
+
+		// Baseline should pass (vulnerable AS still accepts valid exchanges)
+		const baseline = result.results.find((r) => r.test.id === "valid-delegation");
+		expect(baseline?.verdict).toHaveProperty("passed", true);
+
+		// Core splice attacks should detect vulnerabilities (fail = vulnerability detected)
+		const basicSpliceResult = result.results.find((r) => r.test.id === "basic-splice");
+		expect(basicSpliceResult?.verdict).toHaveProperty("passed", false);
+
+		// Verify there are multiple detected vulnerabilities
+		expect(result.summary.failed).toBeGreaterThanOrEqual(3);
+
+		// Verify every test completed (no undefined verdicts)
+		for (const r of result.results) {
+			expect(r.verdict).toBeDefined();
+		}
 	});
 });
 
@@ -236,8 +281,7 @@ describe("Integration: secure AS", () => {
 			client,
 		);
 
-		const verdict = result.results[0]?.verdict;
-		expect(verdict && "passed" in verdict && verdict.passed).toBe(true);
+		expect(result.results[0]?.verdict).toHaveProperty("passed", true);
 	});
 });
 

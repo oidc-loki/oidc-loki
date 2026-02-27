@@ -15,7 +15,7 @@
  *   6. FAIL if the AS still issues a new token (context not re-validated)
  */
 
-import { describeResponse, isSecurityRejection, jsonBody } from "./classify.js";
+import { describeResponse, isInconclusive, isSecurityRejection, jsonBody } from "./classify.js";
 import { requireToken } from "./helpers.js";
 import type { AttackTest } from "./types.js";
 import { TOKEN_TYPE } from "./types.js";
@@ -91,10 +91,10 @@ export const refreshBypass: AttackTest = {
 			};
 		}
 
-		if (response.status >= 400) {
+		if (isInconclusive(response)) {
 			return {
-				passed: true,
-				reason: `AS rejected refresh after upstream revocation — ${describeResponse(response)}`,
+				skipped: true,
+				reason: `Inconclusive: ${describeResponse(response)}`,
 			};
 		}
 

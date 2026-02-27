@@ -6,6 +6,7 @@
  * tests to be meaningful.
  */
 
+import { describeResponse, isInconclusive, jsonBody } from "./classify.js";
 import { requireToken } from "./helpers.js";
 import type { AttackTest } from "./types.js";
 import { TOKEN_TYPE } from "./types.js";
@@ -39,22 +40,28 @@ export const validDelegation: AttackTest = {
 
 	verify(response) {
 		if (response.status === 200) {
-			const body = response.body as Record<string, unknown>;
-			if (body.access_token) {
+			const body = jsonBody(response);
+			if (body?.access_token) {
 				return { passed: true, reason: "AS accepted valid delegation" };
 			}
 			return {
 				passed: false,
-				reason: "AS returned 200 but no access_token",
+				reason: "AS returned 200 but no access_token in response body",
 				expected: "200 with access_token",
-				actual: `200 with keys: ${Object.keys(body).join(", ")}`,
+				actual: `200 with body: ${String(response.body).slice(0, 100)}`,
+			};
+		}
+		if (isInconclusive(response)) {
+			return {
+				skipped: true,
+				reason: `Baseline inconclusive: ${describeResponse(response)}. Check client configuration.`,
 			};
 		}
 		return {
 			passed: false,
 			reason: "AS rejected valid delegation",
 			expected: "HTTP 200 with access_token",
-			actual: `HTTP ${response.status}`,
+			actual: describeResponse(response),
 		};
 	},
 };

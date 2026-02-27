@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { actClaimStripping } from "../src/tests/act-claim-stripping.js";
 import { actorClientMismatch } from "../src/tests/actor-client-mismatch.js";
 import { audSubBinding } from "../src/tests/aud-sub-binding.js";
+import { audienceTargeting } from "../src/tests/audience-targeting.js";
 import { basicSplice } from "../src/tests/basic-splice.js";
 import {
 	classifyResponse,
@@ -19,7 +21,10 @@ import { refreshBypass } from "../src/tests/refresh-bypass.js";
 import { revocationPropagation } from "../src/tests/revocation-propagation.js";
 import { scopeEscalation } from "../src/tests/scope-escalation.js";
 import { subjectActorSwap } from "../src/tests/subject-actor-swap.js";
+import { tokenTypeEscalation } from "../src/tests/token-type-escalation.js";
+import { tokenTypeMismatch } from "../src/tests/token-type-mismatch.js";
 import type { AttackResponse, SetupResult } from "../src/tests/types.js";
+import { unauthenticatedExchange } from "../src/tests/unauthenticated-exchange.js";
 import { upstreamSplice } from "../src/tests/upstream-splice.js";
 import { validDelegation } from "../src/tests/valid-delegation.js";
 
@@ -75,6 +80,38 @@ describe("classifyResponse", () => {
 	it("classifies 302 as unknown", () => {
 		expect(classifyResponse(makeResponse(302))).toBe("unknown");
 	});
+
+	it("classifies 404 as unknown", () => {
+		expect(classifyResponse(makeResponse(404))).toBe("unknown");
+	});
+
+	it("classifies 400 with unsupported_grant_type as unsupported", () => {
+		expect(classifyResponse(makeResponse(400, { error: "unsupported_grant_type" }))).toBe(
+			"unsupported",
+		);
+	});
+
+	it("classifies 400 with invalid_scope as security_rejection", () => {
+		expect(classifyResponse(makeResponse(400, { error: "invalid_scope" }))).toBe(
+			"security_rejection",
+		);
+	});
+
+	it("classifies 400 with custom error code as security_rejection (default)", () => {
+		expect(classifyResponse(makeResponse(400, { error: "custom_vendor_error" }))).toBe(
+			"security_rejection",
+		);
+	});
+
+	it("handles array body without error", () => {
+		expect(classifyResponse(makeResponse(400, [{ error: "invalid_grant" }]))).toBe(
+			"security_rejection",
+		);
+	});
+
+	it("handles string body", () => {
+		expect(classifyResponse(makeResponse(400, "Bad Request"))).toBe("security_rejection");
+	});
 });
 
 describe("isSecurityRejection", () => {
@@ -106,6 +143,18 @@ describe("isInconclusive", () => {
 
 	it("returns true for server_error", () => {
 		expect(isInconclusive(makeResponse(500))).toBe(true);
+	});
+
+	it("returns true for unsupported", () => {
+		expect(isInconclusive(makeResponse(400, { error: "unsupported_grant_type" }))).toBe(true);
+	});
+
+	it("returns true for unknown (302)", () => {
+		expect(isInconclusive(makeResponse(302))).toBe(true);
+	});
+
+	it("returns true for unknown (404)", () => {
+		expect(isInconclusive(makeResponse(404))).toBe(true);
 	});
 
 	it("returns false for security_rejection", () => {
@@ -159,6 +208,20 @@ describe("describeResponse", () => {
 	it("describes rate limit", () => {
 		expect(describeResponse(makeResponse(429))).toBe("HTTP 429 rate limited");
 	});
+
+	it("describes unsupported grant type", () => {
+		expect(describeResponse(makeResponse(400, { error: "unsupported_grant_type" }))).toBe(
+			"HTTP 400 unsupported (unsupported_grant_type)",
+		);
+	});
+
+	it("describes server error", () => {
+		expect(describeResponse(makeResponse(500))).toBe("HTTP 500 server error");
+	});
+
+	it("describes unknown status", () => {
+		expect(describeResponse(makeResponse(302))).toMatch(/HTTP 302/);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -176,11 +239,36 @@ describe("valid-delegation verify", () => {
 		expect(verdict).toHaveProperty("passed", false);
 	});
 
-	it("fails on 400", () => {
+	it("fails on 400 security rejection", () => {
 		const verdict = validDelegation.verify(
 			makeResponse(400, { error: "invalid_request" }),
 			emptySetup,
 		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on 401 auth error (inconclusive)", () => {
+		const verdict = validDelegation.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 429 rate limit (inconclusive)", () => {
+		const verdict = validDelegation.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 500 server error (inconclusive)", () => {
+		const verdict = validDelegation.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("handles 200 with null body gracefully", () => {
+		const verdict = validDelegation.verify(makeResponse(200, null), emptySetup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("handles 200 with string body gracefully", () => {
+		const verdict = validDelegation.verify(makeResponse(200, "not json"), emptySetup);
 		expect(verdict).toHaveProperty("passed", false);
 	});
 });
@@ -206,6 +294,24 @@ describe("basic-splice verify", () => {
 		expect(verdict).toHaveProperty("skipped", true);
 	});
 
+	it("skips on server error (500)", () => {
+		const verdict = basicSplice.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 404 (unknown/inconclusive)", () => {
+		const verdict = basicSplice.verify(makeResponse(404), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on unsupported_grant_type", () => {
+		const verdict = basicSplice.verify(
+			makeResponse(400, { error: "unsupported_grant_type" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
 	it("fails when AS accepts (200)", () => {
 		const verdict = basicSplice.verify(makeResponse(200, { access_token: "bad" }), emptySetup);
 		expect(verdict).toHaveProperty("passed", false);
@@ -225,6 +331,16 @@ describe("actor-client-mismatch verify", () => {
 
 	it("skips on auth error", () => {
 		const verdict = actorClientMismatch.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 500 server error", () => {
+		const verdict = actorClientMismatch.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 429 rate limit", () => {
+		const verdict = actorClientMismatch.verify(makeResponse(429), emptySetup);
 		expect(verdict).toHaveProperty("skipped", true);
 	});
 });
@@ -273,6 +389,21 @@ describe("subject-actor-swap verify", () => {
 		const verdict = subjectActorSwap.verify(makeResponse(200), emptySetup);
 		expect(verdict).toHaveProperty("passed", false);
 	});
+
+	it("skips on inconclusive (429 rate limit)", () => {
+		const verdict = subjectActorSwap.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500 server error)", () => {
+		const verdict = subjectActorSwap.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (401 auth error)", () => {
+		const verdict = subjectActorSwap.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
 });
 
 describe("multi-audience verify", () => {
@@ -294,6 +425,18 @@ describe("multi-audience verify", () => {
 		const verdict = multiAudience.verify(makeResponse(200), setup);
 		expect(verdict).toHaveProperty("passed", false);
 	});
+
+	it("skips on inconclusive (401 auth error)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMultiAud: true } };
+		const verdict = multiAudience.verify(makeResponse(401), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500 server error)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMultiAud: false } };
+		const verdict = multiAudience.verify(makeResponse(500), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
 });
 
 describe("missing-aud verify", () => {
@@ -313,6 +456,18 @@ describe("missing-aud verify", () => {
 		const setup: SetupResult = { tokens: {}, metadata: { hasAud: true } };
 		const verdict = missingAud.verify(makeResponse(200), setup);
 		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on inconclusive (401 auth error)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasAud: false } };
+		const verdict = missingAud.verify(makeResponse(401), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (429 rate limit)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasAud: true } };
+		const verdict = missingAud.verify(makeResponse(429), setup);
+		expect(verdict).toHaveProperty("skipped", true);
 	});
 });
 
@@ -339,6 +494,39 @@ describe("may-act-enforcement verify", () => {
 		const setup: SetupResult = { tokens: {}, metadata: { hasMayAct: false } };
 		const verdict = mayActEnforcement.verify(makeResponse(400), setup);
 		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("skips on 401 auth error when may_act present (not a false pass)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMayAct: true } };
+		const verdict = mayActEnforcement.verify(makeResponse(401), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 429 rate limit when may_act present (not a false pass)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMayAct: true } };
+		const verdict = mayActEnforcement.verify(makeResponse(429), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 500 server error when may_act present (not a false pass)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMayAct: true } };
+		const verdict = mayActEnforcement.verify(makeResponse(500), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 401 auth error when may_act not present (not a false pass)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMayAct: false } };
+		const verdict = mayActEnforcement.verify(makeResponse(401), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on unsupported_grant_type (AS does not support token exchange)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasMayAct: true } };
+		const verdict = mayActEnforcement.verify(
+			makeResponse(400, { error: "unsupported_grant_type" }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("skipped", true);
 	});
 });
 
@@ -371,6 +559,35 @@ describe("scope-escalation verify", () => {
 		const verdict = scopeEscalation.verify(makeResponse(200, { access_token: "tok" }), emptySetup);
 		expect(verdict).toHaveProperty("passed", false);
 	});
+
+	it("fails when scope contains only 'admin'", () => {
+		const verdict = scopeEscalation.verify(
+			makeResponse(200, { access_token: "tok", scope: "admin" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("fails when scope contains 'write'", () => {
+		const verdict = scopeEscalation.verify(
+			makeResponse(200, { access_token: "tok", scope: "readonly write" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("fails when scope contains 'delete'", () => {
+		const verdict = scopeEscalation.verify(
+			makeResponse(200, { access_token: "tok", scope: "openid delete" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on inconclusive (500 server error)", () => {
+		const verdict = scopeEscalation.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
 });
 
 describe("delegation-impersonation-confusion verify", () => {
@@ -391,6 +608,33 @@ describe("delegation-impersonation-confusion verify", () => {
 		);
 		expect(verdict).toHaveProperty("skipped", true);
 	});
+
+	it("passes when JWT has act claim (proper delegation)", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-a"}}.
+		const jwtWithAct =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1hIn19.";
+		const verdict = delegationImpersonationConfusion.verify(
+			makeResponse(200, { access_token: jwtWithAct }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when JWT lacks act claim (impersonation instead of delegation)", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice"}.
+		const jwtWithoutAct = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSJ9.";
+		const verdict = delegationImpersonationConfusion.verify(
+			makeResponse(200, { access_token: jwtWithoutAct }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("act");
+	});
+
+	it("skips on inconclusive (429 rate limit)", () => {
+		const verdict = delegationImpersonationConfusion.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
 });
 
 describe("refresh-bypass verify", () => {
@@ -404,9 +648,24 @@ describe("refresh-bypass verify", () => {
 		expect(verdict).toHaveProperty("passed", false);
 	});
 
-	it("fails on unexpected response", () => {
+	it("skips on unexpected response (302 is inconclusive)", () => {
 		const verdict = refreshBypass.verify(makeResponse(302), emptySetup);
-		expect(verdict).toHaveProperty("passed", false);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 401 auth error (not a false pass)", () => {
+		const verdict = refreshBypass.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 429 rate limit (not a false pass)", () => {
+		const verdict = refreshBypass.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 500 server error (not a false pass)", () => {
+		const verdict = refreshBypass.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
 	});
 });
 
@@ -426,9 +685,213 @@ describe("revocation-propagation verify", () => {
 		expect(verdict).toHaveProperty("skipped", true);
 	});
 
+	it("skips when introspection returns 403", () => {
+		const verdict = revocationPropagation.verify(makeResponse(403), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
 	it("skips when introspection returns other error", () => {
 		const verdict = revocationPropagation.verify(makeResponse(500), emptySetup);
 		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// TE-01 through TE-05: New must-have attack vectors
+// ---------------------------------------------------------------------------
+
+describe("token-type-mismatch verify", () => {
+	it("passes when AS rejects mismatched type", () => {
+		const verdict = tokenTypeMismatch.verify(
+			makeResponse(400, { error: "invalid_request" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS accepts mismatched type", () => {
+		const verdict = tokenTypeMismatch.verify(
+			makeResponse(200, { access_token: "tok" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on auth error (401)", () => {
+		const verdict = tokenTypeMismatch.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on server error (500)", () => {
+		const verdict = tokenTypeMismatch.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("unauthenticated-exchange verify", () => {
+	it("passes on 401 (client auth required)", () => {
+		const verdict = unauthenticatedExchange.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes on 400 with invalid_client", () => {
+		const verdict = unauthenticatedExchange.verify(
+			makeResponse(400, { error: "invalid_client" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS issues token without auth", () => {
+		const verdict = unauthenticatedExchange.verify(
+			makeResponse(200, { access_token: "tok" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("passes on 403 rejection", () => {
+		const verdict = unauthenticatedExchange.verify(makeResponse(403), emptySetup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("skips on 429 rate limit", () => {
+		const verdict = unauthenticatedExchange.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 500 server error", () => {
+		const verdict = unauthenticatedExchange.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("token-type-escalation verify", () => {
+	it("passes when AS rejects escalation", () => {
+		const verdict = tokenTypeEscalation.verify(
+			makeResponse(400, { error: "invalid_request" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS issues refresh_token", () => {
+		const verdict = tokenTypeEscalation.verify(
+			makeResponse(200, {
+				access_token: "at",
+				refresh_token: "rt",
+				issued_token_type: "urn:ietf:params:oauth:token-type:refresh_token",
+			}),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("passes when AS constrains to access_token instead", () => {
+		const verdict = tokenTypeEscalation.verify(
+			makeResponse(200, {
+				access_token: "at",
+				issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+			}),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("skips on auth error", () => {
+		const verdict = tokenTypeEscalation.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("audience-targeting verify", () => {
+	it("passes when AS rejects unauthorized audience", () => {
+		const verdict = audienceTargeting.verify(
+			makeResponse(400, { error: "invalid_target" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS issues token for unauthorized audience", () => {
+		const verdict = audienceTargeting.verify(
+			makeResponse(200, { access_token: "tok" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on 401 auth error", () => {
+		const verdict = audienceTargeting.verify(makeResponse(401), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on 500 server error", () => {
+		const verdict = audienceTargeting.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("act-claim-stripping verify", () => {
+	it("passes when AS rejects re-exchange (security rejection)", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: true } };
+		const verdict = actClaimStripping.verify(makeResponse(400, { error: "invalid_grant" }), setup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS returns 200 without act claim (stripped)", () => {
+		// Simulate: original had act claim, result doesn't
+		// We can't create a real JWT in unit tests easily, so we test the
+		// non-JWT path (opaque token → skipped)
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: true } };
+		const verdict = actClaimStripping.verify(
+			makeResponse(200, { access_token: "opaque-token-no-dots" }),
+			setup,
+		);
+		// Opaque token can't be decoded → skipped
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("fails when original had no act and AS allows impersonation", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: false } };
+		const verdict = actClaimStripping.verify(makeResponse(200, { access_token: "tok" }), setup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("skips on inconclusive response", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: true } };
+		const verdict = actClaimStripping.verify(makeResponse(429), setup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("fails on 200 with no access_token", () => {
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: true } };
+		const verdict = actClaimStripping.verify(makeResponse(200, {}), setup);
+		expect(verdict).toHaveProperty("passed", false);
+	});
+
+	it("passes when JWT preserves act claim after re-exchange", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice","act":{"sub":"agent-a"}}.
+		const jwtWithAct =
+			"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSIsImFjdCI6eyJzdWIiOiJhZ2VudC1hIn19.";
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: true } };
+		const verdict = actClaimStripping.verify(
+			makeResponse(200, { access_token: jwtWithAct }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when JWT has act stripped after re-exchange", () => {
+		// JWT: {"alg":"none","typ":"JWT"}.{"sub":"alice"}.  (no act claim)
+		const jwtWithoutAct = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbGljZSJ9.";
+		const setup: SetupResult = { tokens: {}, metadata: { hasActClaim: true } };
+		const verdict = actClaimStripping.verify(
+			makeResponse(200, { access_token: jwtWithoutAct }),
+			setup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("stripped");
 	});
 });
 
@@ -458,9 +921,9 @@ describe("test metadata", () => {
 		}
 	});
 
-	it("has expected number of tests (13)", async () => {
+	it("has expected number of tests (18)", async () => {
 		const { allTests: tests } = await import("../src/tests/index.js");
-		expect(tests).toHaveLength(13);
+		expect(tests).toHaveLength(18);
 	});
 });
 

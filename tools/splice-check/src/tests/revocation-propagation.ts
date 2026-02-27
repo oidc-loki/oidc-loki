@@ -7,6 +7,7 @@
  * revokes consent.
  */
 
+import { jsonBody } from "./classify.js";
 import { requireToken } from "./helpers.js";
 import type { AttackTest } from "./types.js";
 import { TOKEN_TYPE } from "./types.js";
@@ -37,8 +38,11 @@ export const revocationPropagation: AttackTest = {
 			throw new Error(`Setup: delegation exchange failed (HTTP ${exchangeResponse.status})`);
 		}
 
-		const body = exchangeResponse.body as Record<string, unknown>;
-		const delegatedToken = body.access_token as string;
+		const body = jsonBody(exchangeResponse);
+		const delegatedToken = body?.access_token as string | undefined;
+		if (!delegatedToken) {
+			throw new Error("Setup: delegation exchange returned 200 but no access_token");
+		}
 
 		return {
 			tokens: {
@@ -66,14 +70,14 @@ export const revocationPropagation: AttackTest = {
 	verify(response) {
 		// If introspection is supported, check whether the token is marked inactive
 		if (response.status === 200) {
-			const body = response.body as Record<string, unknown>;
-			if (body.active === false) {
+			const body = jsonBody(response);
+			if (body?.active === false) {
 				return {
 					passed: true,
 					reason: "Downstream token correctly marked inactive after upstream revocation",
 				};
 			}
-			if (body.active === true) {
+			if (body?.active === true) {
 				return {
 					passed: false,
 					reason: "Downstream token still active after upstream token revocation",
