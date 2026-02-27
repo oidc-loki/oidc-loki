@@ -10,7 +10,7 @@
 [target]
 token_endpoint = "https://localhost:9443/oauth2/token"
 jwks_endpoint  = "https://localhost:9443/oauth2/jwks"
-issuer         = "https://localhost:9443/oauth2/token"
+issuer         = "https://localhost:9443"
 
 # Optional: explicit endpoint overrides (defaults derive from token_endpoint)
 # revocation_endpoint    = "https://localhost:9443/oauth2/revoke"

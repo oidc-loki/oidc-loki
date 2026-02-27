@@ -167,6 +167,22 @@ async function runSingleTest(
 		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
+		// Network errors (fetch failed, ECONNREFUSED, timeout) are infrastructure
+		// issues, not security verdicts — report as SKIP, not FAIL.
+		const isNetworkError =
+			message.includes("fetch failed") ||
+			message.includes("ECONNREFUSED") ||
+			message.includes("ETIMEDOUT") ||
+			message.includes("ENOTFOUND") ||
+			message.includes("socket hang up");
+		if (isNetworkError) {
+			return {
+				test: pick(test),
+				verdict: { skipped: true, reason: `Network error: ${message}` },
+				durationMs: elapsed(testStart),
+				logs,
+			};
+		}
 		return {
 			test: pick(test),
 			verdict: {

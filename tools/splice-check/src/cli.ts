@@ -23,7 +23,7 @@ program
 		"Validate OAuth 2.0 Authorization Server resistance to delegation chain splicing attacks (RFC 8693)",
 	)
 	.version("0.1.0")
-	.requiredOption("-c, --config <path>", "Path to TOML config file")
+	.option("-c, --config <path>", "Path to TOML config file")
 	.option("-f, --format <format>", "Output format: table, json, markdown", "table")
 	.option("-t, --test <id...>", "Run specific test(s) by ID")
 	.option("-v, --verbose", "Enable verbose logging", false)
@@ -40,6 +40,11 @@ async function runCli(opts: CliOptions): Promise<void> {
 	if (opts.list) {
 		listTests();
 		return;
+	}
+
+	if (!opts.config) {
+		console.error("Error: --config <path> is required (unless using --list)");
+		process.exit(2);
 	}
 
 	try {
@@ -131,7 +136,7 @@ function listTests(): void {
 }
 
 interface CliOptions {
-	config: string;
+	config?: string;
 	format?: string;
 	test?: string[];
 	verbose?: boolean;

@@ -28,20 +28,21 @@ export function formatResults(run: RunResult, format: "table" | "json" | "markdo
 function formatTable(run: RunResult): string {
 	const lines: string[] = [];
 
-	lines.push("");
-	lines.push("  splice-check results");
-	lines.push(`  ${"=".repeat(70)}`);
-	lines.push("");
-
-	// Column widths
-	const idWidth = 24;
+	// Column widths — compute from longest test ID
+	const idWidth = Math.max(24, ...run.results.map((r) => r.test.id.length + 4));
 	const sevWidth = 10;
 	const statusWidth = 8;
+	const tableWidth = idWidth + sevWidth + statusWidth + 30;
+
+	lines.push("");
+	lines.push("  splice-check results");
+	lines.push(`  ${"=".repeat(tableWidth)}`);
+	lines.push("");
 
 	lines.push(
 		`  ${"TEST".padEnd(idWidth)}${"SEVERITY".padEnd(sevWidth)}${"STATUS".padEnd(statusWidth)}REASON`,
 	);
-	lines.push(`  ${"-".repeat(70)}`);
+	lines.push(`  ${"-".repeat(tableWidth)}`);
 
 	for (const r of run.results) {
 		const status = verdictStatus(r);
@@ -53,7 +54,7 @@ function formatTable(run: RunResult): string {
 		);
 	}
 
-	lines.push(`  ${"-".repeat(70)}`);
+	lines.push(`  ${"-".repeat(tableWidth)}`);
 	lines.push("");
 	lines.push(summaryLine(run));
 	lines.push("");
