@@ -1,0 +1,53 @@
+# splice-check example configuration
+#
+# Point this at your Authorization Server's token endpoint.
+# Pre-provision the three test clients below on your AS with
+# appropriate permissions for token exchange (RFC 8693).
+#
+# Secrets support ${ENV_VAR} interpolation, e.g.:
+#   client_secret = "${ALICE_SECRET}"
+
+[target]
+token_endpoint = "https://localhost:9443/oauth2/token"
+jwks_endpoint  = "https://localhost:9443/oauth2/jwks"
+issuer         = "https://localhost:9443/oauth2/token"
+
+# Optional: explicit endpoint overrides (defaults derive from token_endpoint)
+# revocation_endpoint    = "https://localhost:9443/oauth2/revoke"
+# introspection_endpoint = "https://localhost:9443/oauth2/introspect"
+
+# Optional: request timeout in milliseconds (default: 30000)
+# timeout = 30000
+
+[target.auth]
+# How test clients authenticate to the AS
+# Options: "client_secret_post" or "client_secret_basic"
+method = "client_secret_post"
+
+# -------------------------------------------------------------------
+# Test clients
+#
+# Three clients are required:
+#   alice   — the "victim" user (holds the subject_token)
+#   agent-a — legitimate agent in Chain 1
+#   agent-n — the attacker agent (separate chain)
+# -------------------------------------------------------------------
+
+[clients.alice]
+client_id     = "alice-app"
+client_secret = "change-me"
+grant_type    = "client_credentials"
+scope         = "openid profile"
+
+[clients.agent-a]
+client_id     = "agent-a"
+client_secret = "change-me"
+
+[clients.agent-n]
+client_id     = "agent-n"
+client_secret = "change-me"
+
+[output]
+# Options: "table" (terminal), "json" (CI), "markdown" (reports)
+format  = "table"
+verbose = false
