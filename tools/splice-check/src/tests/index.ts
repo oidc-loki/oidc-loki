@@ -19,7 +19,9 @@ import { chainDepthExhaustion } from "./chain-depth-exhaustion.js";
 import { circularDelegation } from "./circular-delegation.js";
 import { delegationImpersonationConfusion } from "./delegation-impersonation-confusion.js";
 import { downstreamAudVerification } from "./downstream-aud-verification.js";
+import { expiredTokenExchange } from "./expired-token-exchange.js";
 import { issuedTokenTypeValidation } from "./issued-token-type-validation.js";
+import { issuerValidation } from "./issuer-validation.js";
 import { mayActEnforcement } from "./may-act-enforcement.js";
 import { missingAud } from "./missing-aud.js";
 import { multiAudience } from "./multi-audience.js";
@@ -52,6 +54,9 @@ export const allTests: AttackTest[] = [
 	audienceTargeting,
 	actClaimStripping,
 	resourceAbuse,
+	// Token forgery / validation attacks
+	issuerValidation,
+	expiredTokenExchange,
 	// Edge-case variants
 	multiAudience,
 	missingAud,

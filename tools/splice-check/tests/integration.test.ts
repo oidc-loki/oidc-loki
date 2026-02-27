@@ -239,7 +239,7 @@ describe("Integration: vulnerable AS", () => {
 		const client = new OAuthClient(config.target, config.clients);
 		const result = await runTests(allTests, config, client);
 
-		expect(result.summary.total).toBe(26);
+		expect(result.summary.total).toBe(28);
 
 		// Baseline should pass (vulnerable AS still accepts valid exchanges)
 		const baseline = result.results.find((r) => r.test.id === "valid-delegation");

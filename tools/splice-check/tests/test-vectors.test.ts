@@ -18,8 +18,10 @@ import {
 } from "../src/tests/classify.js";
 import { delegationImpersonationConfusion } from "../src/tests/delegation-impersonation-confusion.js";
 import { downstreamAudVerification } from "../src/tests/downstream-aud-verification.js";
+import { expiredTokenExchange } from "../src/tests/expired-token-exchange.js";
 import { redactTokens, requireToken } from "../src/tests/helpers.js";
 import { issuedTokenTypeValidation } from "../src/tests/issued-token-type-validation.js";
+import { issuerValidation } from "../src/tests/issuer-validation.js";
 import { mayActEnforcement } from "../src/tests/may-act-enforcement.js";
 import { missingAud } from "../src/tests/missing-aud.js";
 import { multiAudience } from "../src/tests/multi-audience.js";
@@ -1249,6 +1251,71 @@ describe("circular-delegation verify", () => {
 	});
 });
 
+describe("issuer-validation verify", () => {
+	it("passes when AS rejects foreign-issuer token", () => {
+		const verdict = issuerValidation.verify(
+			makeResponse(400, { error: "invalid_grant" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes on 403 rejection", () => {
+		const verdict = issuerValidation.verify(makeResponse(403), emptySetup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS accepts foreign-issuer token", () => {
+		const verdict = issuerValidation.verify(makeResponse(200, { access_token: "tok" }), emptySetup);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("issuer");
+	});
+
+	it("skips on inconclusive (429)", () => {
+		const verdict = issuerValidation.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const verdict = issuerValidation.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
+describe("expired-token-exchange verify", () => {
+	it("passes when AS rejects expired token", () => {
+		const verdict = expiredTokenExchange.verify(
+			makeResponse(400, { error: "invalid_grant" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("passes on 403 rejection", () => {
+		const verdict = expiredTokenExchange.verify(makeResponse(403), emptySetup);
+		expect(verdict).toHaveProperty("passed", true);
+	});
+
+	it("fails when AS accepts expired token", () => {
+		const verdict = expiredTokenExchange.verify(
+			makeResponse(200, { access_token: "tok" }),
+			emptySetup,
+		);
+		expect(verdict).toHaveProperty("passed", false);
+		expect("reason" in verdict && verdict.reason).toContain("expired");
+	});
+
+	it("skips on inconclusive (429)", () => {
+		const verdict = expiredTokenExchange.verify(makeResponse(429), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+
+	it("skips on inconclusive (500)", () => {
+		const verdict = expiredTokenExchange.verify(makeResponse(500), emptySetup);
+		expect(verdict).toHaveProperty("skipped", true);
+	});
+});
+
 describe("chain-depth-exhaustion verify", () => {
 	it("passes when AS rejected during setup (depth limit enforced)", () => {
 		const setup: SetupResult = {
@@ -1320,9 +1387,9 @@ describe("test metadata", () => {
 		}
 	});
 
-	it("has expected number of tests (26)", async () => {
+	it("has expected number of tests (28)", async () => {
 		const { allTests: tests } = await import("../src/tests/index.js");
-		expect(tests).toHaveLength(26);
+		expect(tests).toHaveLength(28);
 	});
 });
 
