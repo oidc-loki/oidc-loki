@@ -37,6 +37,15 @@ test-plugins/
 *.log
 npm-debug.log*
 
+# Internal docs (plans, research, results, correspondence, publications, sub-agents)
+docs/plans/
+docs/research/
+docs/results/
+docs/correspondence/
+docs/publications/
+docs/sub-agents/
+docs/INDEX.md
+
 # Example language artifacts
 __pycache__/
 *.pyc
