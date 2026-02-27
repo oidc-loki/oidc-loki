@@ -1,9 +1,10 @@
 # Plan 001: splice-check CLI (Phase B)
 
-**Status:** Draft
+**Status:** Complete (Steps 1-4, unit/integration tests)
 **Priority:** P0
 **Depends on:** None
 **Blocks:** Plan 002
+**Commit:** `d46d086` (2026-02-27)
 
 ---
 
@@ -193,40 +194,59 @@ export const basicSplice: AttackTest = {
 
 ## Implementation Steps
 
-### Step 1: Scaffold
-- [ ] Create `tools/splice-check/` directory structure
-- [ ] Set up `package.json` with bin entry, deps (commander, jose, toml)
-- [ ] Set up `tsconfig.json` extending root config
-- [ ] Create CLI entry point with `--config` flag
+### Step 1: Scaffold -- DONE
+- [x] Create `tools/splice-check/` directory structure
+- [x] Set up `package.json` with bin entry, deps (commander, jose, smol-toml)
+- [x] Set up `tsconfig.json` (standalone, strict mode)
+- [x] Create CLI entry point with `--config` flag
 
-### Step 2: OAuth client
-- [ ] HTTP client wrapper for token endpoint (fetch-based)
-- [ ] Support client_credentials grant
-- [ ] Support token exchange grant (RFC 8693 parameters)
-- [ ] Support client_secret_post and client_secret_basic auth
+### Step 2: OAuth client -- DONE
+- [x] HTTP client wrapper for token endpoint (fetch-based, AbortSignal timeouts)
+- [x] Support client_credentials grant
+- [x] Support token exchange grant (RFC 8693 parameters, multi-value audience/resource)
+- [x] Support client_secret_post and client_secret_basic auth (RFC 6749 §2.3.1 compliant)
+- [x] Token revocation and introspection with configurable endpoints
 
-### Step 3: Test framework
-- [ ] Define `AttackTest` interface
-- [ ] Build test runner that executes setup -> attack -> verify
-- [ ] Build reporter (table output for terminal, JSON for CI)
+### Step 3: Test framework -- DONE
+- [x] Define `AttackTest` interface with setup/attack/verify lifecycle
+- [x] Build test runner with verbose logging, token redaction, bail-on-baseline-failure
+- [x] Build reporter (table, JSON, markdown output formats)
+- [x] Response classification layer (security_rejection vs auth_error vs rate_limit)
 
-### Step 4: Implement tests
-- [ ] `valid-delegation` -- baseline: proper exchange should succeed
-- [ ] `basic-splice` -- core attack: mismatched subject/actor tokens
-- [ ] `aud-sub-binding` -- actor_token.sub vs subject_token.aud mismatch
-- [ ] `upstream-splice` -- agent requests re-delegation token for unauthorized downstream
-- [ ] `multi-audience` -- subject_token with multi-valued aud array
-- [ ] `missing-aud` -- subject_token with no aud claim
-- [ ] `may-act-enforcement` -- actor not listed in may_act
-- [ ] `refresh-bypass` -- refresh delegated token after consent revocation
-- [ ] `revocation-propagation` -- use downstream token after upstream revocation
+### Step 4: Implement tests -- DONE (13 tests, expanded from original 9)
+- [x] `valid-delegation` -- baseline: proper exchange should succeed
+- [x] `basic-splice` -- core attack: mismatched subject/actor tokens
+- [x] `actor-client-mismatch` -- agent N authenticates but presents agent A's actor_token (NEW)
+- [x] `aud-sub-binding` -- actor_token.sub vs subject_token.aud mismatch
+- [x] `upstream-splice` -- agent requests re-delegation token for unauthorized downstream
+- [x] `subject-actor-swap` -- swap subject and actor token roles (NEW)
+- [x] `multi-audience` -- subject_token with multi-valued aud array
+- [x] `missing-aud` -- subject_token with no aud claim
+- [x] `may-act-enforcement` -- actor not listed in may_act
+- [x] `scope-escalation` -- request escalated scope during exchange (NEW)
+- [x] `delegation-impersonation-confusion` -- verify act claim in delegation response (NEW)
+- [x] `refresh-bypass` -- refresh delegated token after upstream revocation
+- [x] `revocation-propagation` -- use downstream token after upstream revocation
 
-### Step 5: Local testing
+### Step 4b: Unit and integration tests -- DONE (141 tests)
+- [x] `tests/test-vectors.test.ts` -- 80 tests covering all 13 attack vectors + classify layer
+- [x] `tests/client.test.ts` -- OAuth client with mock AS server
+- [x] `tests/config.test.ts` -- Config loading, validation, env var interpolation
+- [x] `tests/runner.test.ts` -- Runner lifecycle, bail, verbose, callbacks
+- [x] `tests/reporter.test.ts` -- Table, JSON, markdown output
+- [x] `tests/integration.test.ts` -- Full-stack integration with mock AS
+
+### Step 4c: Gemini adversarial review -- DONE
+- [x] 23 findings across 5 categories (reports/research/gemini-splice-check-review.md)
+- [x] All Critical and High findings addressed in code
+
+### Step 5: Local testing -- PENDING
 - [ ] Docker Compose file with WSO2 IS
 - [ ] Setup script to provision test clients and delegation policies
 - [ ] Example config file for local WSO2
 
-### Step 6: Documentation
+### Step 6: Documentation -- PARTIAL
+- [x] Example config file with annotated options
 - [ ] README with usage, config reference, test descriptions
 - [ ] Setup guide for WSO2
 - [ ] Setup guide for Keycloak (once SPI exists)
@@ -240,7 +260,7 @@ export const basicSplice: AttackTest = {
 
 ## Success Criteria
 
-- `npx splice-check --config local-wso2.toml` runs all 9 tests against a WSO2 instance
+- `npx splice-check --config local-wso2.toml` runs all 13 tests against a WSO2 instance
 - Output is clear, actionable, and includes pass/fail/skip with reasons
 - JSON output mode works for CI integration
 - No AS-specific code in the test runner -- all config-driven

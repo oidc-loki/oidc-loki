@@ -4,7 +4,7 @@
 
 | # | Plan | Status | Priority |
 |---|------|--------|----------|
-| [001](plans/001-splice-check-cli.md) | splice-check CLI (Phase B) | Draft | P0 |
+| [001](plans/001-splice-check-cli.md) | splice-check CLI (Phase B) | Complete (Steps 1-4) | P0 |
 | [002](plans/002-oidc-loki-v02-bidirectional.md) | oidc-loki v0.2 Bidirectional Architecture (Phase C) | Draft | P1 |
 | [003](plans/003-medium-article-series.md) | Medium Article Series | Part 1 ready | P0 |
 | [004](plans/004-spec-contribution.md) | IETF Spec Contribution | In progress | P0 |
@@ -29,6 +29,7 @@
 | [gemini-chain-splicing-review.md](research/gemini-chain-splicing-review.md) | Gemini's critical review of chain-splicing writeup |
 | [gemini-adversarial-review.md](research/gemini-adversarial-review.md) | Gemini's adversarial review of threat catalog |
 | [claude-review-of-gemini.md](research/claude-review-of-gemini.md) | Claude's cross-review of Gemini's analysis |
+| [gemini-splice-check-review.md](research/gemini-splice-check-review.md) | Gemini adversarial review of splice-check (23 findings) |
 | [chain-splicing-writeup.pdf](research/chain-splicing-writeup.pdf) | Formal disclosure document (PDF) |
 
 ## Correspondence
